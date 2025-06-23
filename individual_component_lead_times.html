@@ -1,0 +1,80 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Individual Component Lead Times</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .header { text-align: center; margin-bottom: 30px; }
+        .chart-container { width: 100%; height: 700px; margin-bottom: 30px; }
+        .summary { background: #f5f5f5; padding: 15px; border-radius: 5px; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Lead Time Analysis: Individual Components</h1>
+        <p>Top 20 Component Types by Number of Data Points (Most Reliable)</p>
+    </div>
+    
+    <div class="chart-container" id="leadTimeChart"></div>
+    <div class="chart-container" id="dataPointsChart"></div>
+    
+    <div class="summary">
+        <h3>Summary Statistics</h3>
+        <p><strong>Most Common Component:</strong> HVAC Fans (85 data points)</p>
+        <p><strong>Highest Lead Time:</strong> Packaged Rooftop Air-Conditioning Units (15.4 weeks)</p>
+        <p><strong>Lowest Lead Time:</strong> Fan-Powered VAV Terminal Units (4.4 weeks)</p>
+    </div>
+
+    <script>
+        // Lead Time Chart
+        const leadTimeTrace = {
+            x: ["HVAC Fans","Air Terminal Units","Computer-Room Air-Conditi...","Diffusers, Registers, and...","Split System Air Conditio...","Variable-Air-Volume Termi...","Water-Source Heat Pumps","Water-Source Unitary Heat...","Packaged Rooftop Air-Cond...","Air Outlets and Inlets","Unit Heaters","Fan Coil Units","Variable Refrigerant Flow...","Electric Unit Heaters","Ductwork Specialties ","Centrifugal HVAC Fans","Dedicated Outdoor-Air Uni...","Fan-Powered VAV Terminal ...","Air-Cooled Scroll Water C...","Hydronic Pumps"],
+            y: [6.3,4.6,11.9,4.6,8.7,4.7,11.7,11.4,15.4,4.5,5.2,8.9,9.4,5.5,5,7.4,15.4,4.4,15.3,6.9],
+            type: 'bar',
+            text: ["n=85","n=44","n=40","n=39","n=27","n=27","n=24","n=24","n=21","n=21","n=20","n=19","n=17","n=17","n=17","n=14","n=9","n=9","n=9","n=8"],
+            textposition: 'outside',
+            marker: { color: 'steelblue' },
+            name: 'Average Lead Time'
+        };
+        
+        const leadTimeLayout = {
+            title: 'Average Lead Time by Component Type',
+            xaxis: { 
+                title: 'Component Type',
+                tickangle: -45,
+                automargin: true
+            },
+            yaxis: { title: 'Average Lead Time (weeks)' },
+            margin: { l: 60, r: 60, t: 80, b: 150 }
+        };
+        
+        Plotly.newPlot('leadTimeChart', [leadTimeTrace], leadTimeLayout);
+        
+        // Data Points Chart
+        const dataPointsTrace = {
+            x: ["HVAC Fans","Air Terminal Units","Computer-Room Air-Conditi...","Diffusers, Registers, and...","Split System Air Conditio...","Variable-Air-Volume Termi...","Water-Source Heat Pumps","Water-Source Unitary Heat...","Packaged Rooftop Air-Cond...","Air Outlets and Inlets","Unit Heaters","Fan Coil Units","Variable Refrigerant Flow...","Electric Unit Heaters","Ductwork Specialties ","Centrifugal HVAC Fans","Dedicated Outdoor-Air Uni...","Fan-Powered VAV Terminal ...","Air-Cooled Scroll Water C...","Hydronic Pumps"],
+            y: [85,44,40,39,27,27,24,24,21,21,20,19,17,17,17,14,9,9,9,8],
+            type: 'bar',
+            text: ["6.3w","4.6w","11.9w","4.6w","8.7w","4.7w","11.7w","11.4w","15.4w","4.5w","5.2w","8.9w","9.4w","5.5w","5w","7.4w","15.4w","4.4w","15.3w","6.9w"],
+            textposition: 'outside',
+            marker: { color: 'lightcoral' },
+            name: 'Data Points'
+        };
+        
+        const dataPointsLayout = {
+            title: 'Number of Data Points per Component Type',
+            xaxis: { 
+                title: 'Component Type',
+                tickangle: -45,
+                automargin: true
+            },
+            yaxis: { title: 'Number of Data Points' },
+            margin: { l: 60, r: 60, t: 80, b: 150 }
+        };
+        
+        Plotly.newPlot('dataPointsChart', [dataPointsTrace], dataPointsLayout);
+    </script>
+</body>
+</html>

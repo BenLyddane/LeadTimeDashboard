@@ -1,0 +1,537 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Historical Lead Time Analysis</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 20px; 
+            background-color: #f8f9fa;
+        }
+        .header { 
+            text-align: center; 
+            margin-bottom: 30px; 
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .chart-container { 
+            width: 100%; 
+            height: 600px; 
+            margin-bottom: 30px; 
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .summary { 
+            background: #e3f2fd; 
+            padding: 20px; 
+            border-radius: 10px; 
+            margin: 20px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .grid-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .stat-box {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #1976d2;
+        }
+        .controls {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        select, button {
+            margin: 5px;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #1976d2;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #1565c0;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📈 Historical Lead Time Analysis Dashboard</h1>
+        <p>Track lead time trends over time by component type and manufacturer</p>
+        <div class="grid-container">
+            <div class="stat-box">
+                <div class="stat-number">6</div>
+                <div>Months of Data</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-number">93</div>
+                <div>Total Component Types</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-number">95</div>
+                <div>Total Manufacturers</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-number">450</div>
+                <div>Total Quotes</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <label>Select View: </label>
+        <button onclick="showComponentTrends()">Component Trends</button>
+        <button onclick="showManufacturerTrends()">Manufacturer Trends</button>
+        <button onclick="showSingleComponent()">Single Component</button>
+        <button onclick="showHeatmap()">Monthly Heatmap</button>
+        <button onclick="showOverallTrend()">Overall Trend</button>
+    </div>
+    
+    <div class="controls">
+        <label>Component Selector: </label>
+        <select id="componentSelector" onchange="updateSingleComponentView()">
+            <option value="">Select a component type...</option>
+        </select>
+        <label style="margin-left: 20px;">Manufacturer Selector: </label>
+        <select id="manufacturerSelector" onchange="updateSingleManufacturerView()">
+            <option value="">Select a manufacturer...</option>
+        </select>
+    </div>
+    
+    <div class="chart-container" id="mainChart"></div>
+    <div class="chart-container" id="secondaryChart"></div>
+    
+    <div class="summary">
+        <h3>📊 Key Insights</h3>
+        <div id="insights"></div>
+    </div>
+
+    <script>
+        const months = ["2025-01","2025-02","2025-03","2025-04","2025-05","2025-06"];
+        const topComponents = ["HVAC Fans","Air Terminal Units","Computer-Room Air-Conditioners","Diffusers, Registers, and Grilles","Split System Air Conditioners","Variable-Air-Volume Terminal Units","Water-Source Heat Pumps","Water-Source Unitary Heat Pumps","Packaged Rooftop Air-Conditioning Units","Air Outlets and Inlets"];
+        const topManufacturers = ["Krueger","Twin City Fan","Trane","Indeeco","Anemostat","Vertiv","Daikin","Titus/Price"];
+        const componentData = {"Computer-Room Air-Conditioners":{"2025-06":{"avgLeadTime":10.8,"medianLeadTime":11,"minLeadTime":8,"maxLeadTime":16,"dataPoints":6,"totalCost":183259.5,"projects":["Societe Generale - 2nd Floor Phase #2","Industrious - 1900 Broadway","Novartis IDF Room"]},"2025-05":{"avgLeadTime":8.2,"medianLeadTime":9.5,"minLeadTime":1,"maxLeadTime":16,"dataPoints":6,"totalCost":544400,"projects":["Uber - 3 WTC, 40th Floor","Novartis IDF Room","Apollo Global Management - Pre-Purchase Package","JPMC 4 Metrotech - Print Services"]},"2025-04":{"avgLeadTime":14,"medianLeadTime":15,"minLeadTime":1,"maxLeadTime":22,"dataPoints":11,"totalCost":1802618.19,"projects":["Paul Weiss - 1345 AoA Project","First Energy DCC Renovation 5th floor & Concourse Level","Industrious - 1 Columbus Circle, 21st Floor","Goldman Sachs SF - 555 Cal 45,46&52","Davis Wright Tremaine LLP - 41st and 42nd Floors","St. Mark's Hospital - New PET CT Project"]},"2025-03":{"avgLeadTime":11.4,"medianLeadTime":9.5,"minLeadTime":1,"maxLeadTime":20,"dataPoints":8,"totalCost":826571,"projects":["Goldman Sachs SF - 555 Cal 45,46&52","JPMC 3203 Hanover (Palo Alto)","320 Park Ave. Flagstar Private Bank Ground & Second Floor ","Yeshiva University Dental School- Phase 1  Fitout","Antares Capital - 280 Park Avenue","451D-MA-UPS & CRAC Replacement"]},"2025-02":{"avgLeadTime":15,"medianLeadTime":17,"minLeadTime":9,"maxLeadTime":21,"dataPoints":7,"totalCost":2031350,"projects":["FS Investments ","JPMC - NOC4-NJ-CRAC Unit Replacement ","MLS 2 Penn Plaza 14th & 15th ","JPMC NOC4 - Awarded","Annaly Capital - 1211 AOA , 41st Floor"]},"2025-01":{"avgLeadTime":5.5,"medianLeadTime":5.5,"minLeadTime":1,"maxLeadTime":10,"dataPoints":2,"totalCost":72000,"projects":["ReWorld - Headquarters 1st and 3rd Floor","Project Hank Retail - Shaver Hall"]}},"Shell-Type, Liquid-to-Liquid Heat Exchangers":{"2025-06":{"avgLeadTime":11,"medianLeadTime":11,"minLeadTime":11,"maxLeadTime":11,"dataPoints":1,"totalCost":115000,"projects":["Herald Towers Retail"]}},"Hydronic Pumps":{"2025-06":{"avgLeadTime":10,"medianLeadTime":10,"minLeadTime":9,"maxLeadTime":11,"dataPoints":2,"totalCost":240000,"projects":["Herald Towers Central plant work","Herald Towers Retail"]},"2025-03":{"avgLeadTime":6.4,"medianLeadTime":8,"minLeadTime":1,"maxLeadTime":10,"dataPoints":5,"totalCost":295414,"projects":["Verizon - North Seattle MSC Project","LIC Warehouse 38-21 12TH St - DD","Yeshiva University Dental School- Phase 1  Fitout","TJX - 770 Renovations (DD BUDGET) "]},"2025-02":{"avgLeadTime":3,"medianLeadTime":3,"minLeadTime":3,"maxLeadTime":3,"dataPoints":1,"totalCost":11500,"projects":["FS Investments "]}},"Plate-Type, Liquid-to-Liquid Heat Exchangers":{"2025-06":{"avgLeadTime":11,"medianLeadTime":11,"minLeadTime":11,"maxLeadTime":11,"dataPoints":1,"totalCost":208000,"projects":["Herald Towers Central plant work"]},"2025-03":{"avgLeadTime":10,"medianLeadTime":10,"minLeadTime":10,"maxLeadTime":10,"dataPoints":1,"totalCost":15000,"projects":["Wells Fargo- Floors 5 & 6 Fitout"]},"2025-02":{"avgLeadTime":12,"medianLeadTime":12,"minLeadTime":12,"maxLeadTime":12,"dataPoints":1,"totalCost":10120,"projects":["MSIG "]}},"Base-Mounted, Centrifugal Hydronic Pumps":{"2025-06":{"avgLeadTime":11,"medianLeadTime":11,"minLeadTime":11,"maxLeadTime":11,"dataPoints":1,"totalCost":115000,"projects":["Herald Towers Retail"]},"2025-05":{"avgLeadTime":4.5,"medianLeadTime":4.5,"minLeadTime":1,"maxLeadTime":8,"dataPoints":2,"totalCost":388820,"projects":["New Pump Station Facility, CAPEX "]}},"In-Line Centrifugal Hydronic Pumps":{"2025-06":{"avgLeadTime":11,"medianLeadTime":11,"minLeadTime":11,"maxLeadTime":11,"dataPoints":1,"totalCost":115000,"projects":["Herald Towers Retail"]},"2025-03":{"avgLeadTime":9,"medianLeadTime":9,"minLeadTime":8,"maxLeadTime":10,"dataPoints":2,"totalCost":182380,"projects":["Yeshiva University Dental School- Phase 1  Fitout","TJX - 770 Renovations (DD BUDGET) "]},"2025-02":{"avgLeadTime":3,"medianLeadTime":3,"minLeadTime":3,"maxLeadTime":3,"dataPoints":1,"totalCost":11500,"projects":["FS Investments "]}},"Packaged, Outdoor, Heating-Only Makeup-Air Units":{"2025-06":{"avgLeadTime":14,"medianLeadTime":14,"minLeadTime":8,"maxLeadTime":20,"dataPoints":2,"totalCost":495518,"projects":["Stonemont - 554 Old Water Works Rd Old Bridge NJ","Paul Weiss - 1345 AoA Project"]},"2025-04":{"avgLeadTime":14,"medianLeadTime":14,"minLeadTime":14,"maxLeadTime":14,"dataPoints":1,"totalCost":228430,"projects":["Los Robles Hospital & Medical Center - Mechanical/TAB Investigation"]},"2025-02":{"avgLeadTime":24,"medianLeadTime":24,"minLeadTime":24,"maxLeadTime":24,"dataPoints":1,"totalCost":0,"projects":["850 3rd Ave HPS Investment Partners Project"]}},"Packaged Rooftop Air-Conditioning Units":{"2025-06":{"avgLeadTime":12.5,"medianLeadTime":10,"minLeadTime":9,"maxLeadTime":21,"dataPoints":4,"totalCost":1142668,"projects":["Hollywood Golf Club Renovation","Scannell - WVT1 Project Moose,  Essex VT","First Energy-Dover Richboynton Service Center HVAC Upgrades"]},"2025-05":{"avgLeadTime":13.7,"medianLeadTime":13.5,"minLeadTime":9,"maxLeadTime":18,"dataPoints":6,"totalCost":1196968,"projects":["Pasadena Central Library Seismic Retrofit & Historic Renovation","The Hoxton - 616 Ewing Ave","Revlon - 15 Nest - R&D relocation"]},"2025-04":{"avgLeadTime":21.5,"medianLeadTime":16.5,"minLeadTime":9,"maxLeadTime":50,"dataPoints":6,"totalCost":3126454,"projects":["ASML B20 - AHU Replacements","QVC Expo RTU Replacement","RedHat RTU"]},"2025-03":{"avgLeadTime":13.8,"medianLeadTime":12.5,"minLeadTime":1,"maxLeadTime":29,"dataPoints":4,"totalCost":786972,"projects":["RedHat RTU","Orlando Health-Lakeland FSED","Verizon - North Seattle MSC Project"]},"2025-02":{"avgLeadTime":8,"medianLeadTime":8,"minLeadTime":8,"maxLeadTime":8,"dataPoints":1,"totalCost":74385,"projects":["Bank of America Springfield"]}},"Split System Air Conditioners":{"2025-06":{"avgLeadTime":5,"medianLeadTime":7,"minLeadTime":1,"maxLeadTime":7,"dataPoints":3,"totalCost":2952,"projects":["Scannell - WVT1 Project Moose,  Essex VT","First Energy-Dover Richboynton Service Center HVAC Upgrades"]},"2025-05":{"avgLeadTime":8,"medianLeadTime":9,"minLeadTime":6,"maxLeadTime":9,"dataPoints":5,"totalCost":119923,"projects":["Pasadena Central Library Seismic Retrofit & Historic Renovation","Provo Airport Phase II Expansion Final GMP","Verizon Spokane Reliability Uplift","Verizon Tacoma Reliability Uplift ","Affirm NY"]},"2025-04":{"avgLeadTime":5.5,"medianLeadTime":5.5,"minLeadTime":5,"maxLeadTime":6,"dataPoints":2,"totalCost":84545,"projects":["Live Nation Comedy Clubs","DHHA New Westside Clinic and Parking Structure - DD Budget"]},"2025-03":{"avgLeadTime":8,"medianLeadTime":6,"minLeadTime":1,"maxLeadTime":17,"dataPoints":7,"totalCost":723753,"projects":["Verizon - North Seattle MSC Project","Orlando Health-Lakeland FSED","Novo Nordisk HQ: Thrive - Heart","Carlyle - C3 Renovation + C1 & C2 Lobby","LIC Warehouse 38-21 12TH St - DD"]},"2025-02":{"avgLeadTime":8.8,"medianLeadTime":5.5,"minLeadTime":4,"maxLeadTime":20,"dataPoints":4,"totalCost":421454,"projects":["Bank of America Springfield","Haidilao - 2 Avery Street, Boston","104CC - Princeton Longevity MRI Room Expansion","People's Theatre Project (PTP) - GMP ITB"]},"2025-01":{"avgLeadTime":12.8,"medianLeadTime":11,"minLeadTime":4,"maxLeadTime":23,"dataPoints":6,"totalCost":1063592,"projects":["Bank of America: Retail Interior Renovations","People's Theatre Project (PTP) - GMP ITB","Project Hank Retail - Shaver Hall","NYAC Solarium Project","680 5th Avenue Amenity Areas "]}},"Air-Cooled, Rotary-Screw Water Chillers":{"2025-06":{"avgLeadTime":37,"medianLeadTime":37,"minLeadTime":37,"maxLeadTime":37,"dataPoints":1,"totalCost":469000,"projects":["Citizens Bank Park - Right Field Club "]},"2025-05":{"avgLeadTime":22,"medianLeadTime":22,"minLeadTime":22,"maxLeadTime":22,"dataPoints":1,"totalCost":785800,"projects":["Citizens Bank Park - Right Field Club "]}},"Dedicated Outdoor-Air Units":{"2025-06":{"avgLeadTime":16,"medianLeadTime":16,"minLeadTime":16,"maxLeadTime":16,"dataPoints":1,"totalCost":71500,"projects":["First Energy-Dover Richboynton Service Center HVAC Upgrades"]},"2025-05":{"avgLeadTime":17.5,"medianLeadTime":17.5,"minLeadTime":17,"maxLeadTime":18,"dataPoints":2,"totalCost":394211,"projects":["The Hoxton - 616 Ewing Ave"]},"2025-04":{"avgLeadTime":20.5,"medianLeadTime":20.5,"minLeadTime":16,"maxLeadTime":25,"dataPoints":2,"totalCost":373250,"projects":["First Energy DCC Renovation 5th floor & Concourse Level"]},"2025-01":{"avgLeadTime":11.8,"medianLeadTime":10,"minLeadTime":1,"maxLeadTime":26,"dataPoints":4,"totalCost":3166250,"projects":["SSUH - Boiler and Chiller Plant Replacement (52100495es)"]}},"Indoor Central-Station Air-Handling Units":{"2025-06":{"avgLeadTime":20,"medianLeadTime":20,"minLeadTime":20,"maxLeadTime":20,"dataPoints":1,"totalCost":256700,"projects":["Paul Weiss - 1345 AoA Project"]},"2025-05":{"avgLeadTime":19,"medianLeadTime":19,"minLeadTime":19,"maxLeadTime":19,"dataPoints":1,"totalCost":534879,"projects":["Pasadena Central Library Seismic Retrofit & Historic Renovation"]},"2025-04":{"avgLeadTime":13,"medianLeadTime":13,"minLeadTime":13,"maxLeadTime":13,"dataPoints":1,"totalCost":26200,"projects":["Ronald McDonald House"]},"2025-03":{"avgLeadTime":5,"medianLeadTime":5,"minLeadTime":5,"maxLeadTime":5,"dataPoints":1,"totalCost":65000,"projects":["Ronald McDonald House"]},"2025-02":{"avgLeadTime":18.1,"medianLeadTime":21.5,"minLeadTime":3,"maxLeadTime":26.2,"dataPoints":4,"totalCost":745690.88,"projects":["NYULH - New Grossing Lab AHU"]}},"Small-Capacity Self-Contained Air-Conditioners":{"2025-06":{"avgLeadTime":20,"medianLeadTime":20,"minLeadTime":20,"maxLeadTime":20,"dataPoints":1,"totalCost":256700,"projects":["Paul Weiss - 1345 AoA Project"]}},"Fan-Powered VAV Terminal Units":{"2025-06":{"avgLeadTime":4,"medianLeadTime":4,"minLeadTime":4,"maxLeadTime":4,"dataPoints":1,"totalCost":7932.33,"projects":["55 Hudson Yards Cooley 47th Floor"]},"2025-05":{"avgLeadTime":3.7,"medianLeadTime":4,"minLeadTime":1,"maxLeadTime":6,"dataPoints":3,"totalCost":6500,"projects":["Uber - 3 WTC, 40th Floor","55 Hudson Yards Cooley 47th Floor"]},"2025-03":{"avgLeadTime":5.3,"medianLeadTime":4.5,"minLeadTime":4,"maxLeadTime":8,"dataPoints":4,"totalCost":272220,"projects":["320 Park Ave. Flagstar Private Bank Ground & Second Floor ","Yeshiva University Dental School- Phase 1  Fitout","601W Companies -Harborside Co-Working Space"]},"2025-02":{"avgLeadTime":4,"medianLeadTime":4,"minLeadTime":4,"maxLeadTime":4,"dataPoints":1,"totalCost":253590,"projects":["FS Investments "]}},"Fan Coil Units":{"2025-06":{"avgLeadTime":7,"medianLeadTime":7,"minLeadTime":7,"maxLeadTime":7,"dataPoints":1,"totalCost":1,"projects":["First Energy-Dover Richboynton Service Center HVAC Upgrades"]},"2025-05":{"avgLeadTime":11.5,"medianLeadTime":11.5,"minLeadTime":6,"maxLeadTime":17,"dataPoints":2,"totalCost":291710,"projects":["Pasadena Central Library Seismic Retrofit & Historic Renovation","Orlando Health-Lakeland FSED"]},"2025-04":{"avgLeadTime":10.3,"medianLeadTime":9.5,"minLeadTime":5,"maxLeadTime":17,"dataPoints":4,"totalCost":1730915,"projects":["Live Nation Comedy Clubs","255 West 34th Street","Davis Wright Tremaine LLP - 41st and 42nd Floors"]},"2025-03":{"avgLeadTime":8.4,"medianLeadTime":8.5,"minLeadTime":1,"maxLeadTime":17,"dataPoints":8,"totalCost":322812,"projects":["Verizon - North Seattle MSC Project","Carlyle - C3 Renovation + C1 & C2 Lobby","Wells Fargo- Floors 5 & 6 Fitout"]},"2025-02":{"avgLeadTime":8,"medianLeadTime":10,"minLeadTime":4,"maxLeadTime":10,"dataPoints":3,"totalCost":103154,"projects":["15 Central Park West- Amenity Space ","Bank of America Springfield","Nuveen - 730 Third Ave - Floors 13-15"]},"2025-01":{"avgLeadTime":8,"medianLeadTime":8,"minLeadTime":8,"maxLeadTime":8,"dataPoints":1,"totalCost":89000,"projects":["680 5th Avenue Amenity Areas "]}},"Variable Refrigerant Flow Systems":{"2025-06":{"avgLeadTime":7,"medianLeadTime":7,"minLeadTime":7,"maxLeadTime":7,"dataPoints":1,"totalCost":1,"projects":["First Energy-Dover Richboynton Service Center HVAC Upgrades"]},"2025-05":{"avgLeadTime":7,"medianLeadTime":7,"minLeadTime":7,"maxLeadTime":7,"dataPoints":1,"totalCost":67104,"projects":["Pasadena Central Library Seismic Retrofit & Historic Renovation"]},"2025-04":{"avgLeadTime":6.7,"medianLeadTime":5,"minLeadTime":5,"maxLeadTime":10,"dataPoints":3,"totalCost":479150,"projects":["First Energy DCC Renovation 5th floor & Concourse Level","Live Nation Comedy Clubs"]},"2025-03":{"avgLeadTime":7,"medianLeadTime":5.5,"minLeadTime":5,"maxLeadTime":12,"dataPoints":4,"totalCost":142101,"projects":["Orlando Health-Lakeland FSED","Garfunkel Wild - Garden City, NY","Carlyle - C3 Renovation + C1 & C2 Lobby"]},"2025-02":{"avgLeadTime":9.2,"medianLeadTime":5,"minLeadTime":4,"maxLeadTime":20,"dataPoints":5,"totalCost":470854,"projects":["Park Tower Management Offices and Amenities","Bank of America Springfield","Haidilao - 2 Avery Street, Boston","People's Theatre Project (PTP) - GMP ITB"]},"2025-01":{"avgLeadTime":17,"medianLeadTime":20,"minLeadTime":8,"maxLeadTime":23,"dataPoints":3,"totalCost":977900,"projects":["People's Theatre Project (PTP) - GMP ITB","680 5th Avenue Amenity Areas "]}},"Water-Source Heat Pumps":{"2025-06":{"avgLeadTime":7,"medianLeadTime":7,"minLeadTime":7,"maxLeadTime":7,"dataPoints":1,"totalCost":1,"projects":["First Energy-Dover Richboynton Service Center HVAC Upgrades"]},"2025-05":{"avgLeadTime":9.7,"medianLeadTime":10,"minLeadTime":9,"maxLeadTime":10,"dataPoints":3,"totalCost":372485,"projects":["Apollo Global Management - Pre-Purchase Package"]},"2025-04":{"avgLeadTime":13.3,"medianLeadTime":15,"minLeadTime":1,"maxLeadTime":21,"dataPoints":9,"totalCost":1577138.38,"projects":["Paul Weiss - 1345 AoA Project","Goldman Sachs SF - 555 Cal 45,46&52","Davis Wright Tremaine LLP - 41st and 42nd Floors","Vornado - Penn 1 GMSC  1 - Level Space"]},"2025-03":{"avgLeadTime":12.4,"medianLeadTime":13,"minLeadTime":9,"maxLeadTime":15,"dataPoints":5,"totalCost":263983.69,"projects":["Fisher Brothers - 299 Park Ave, 3rd & 4th Floor","TJX - 770 Renovations (DD BUDGET) ","320 Park Ave. Flagstar Private Bank Ground & Second Floor ","Yeshiva University Dental School- Phase 1  Fitout"]},"2025-02":{"avgLeadTime":10.7,"medianLeadTime":12,"minLeadTime":8,"maxLeadTime":12,"dataPoints":3,"totalCost":96829.31,"projects":["Katherine's Restaurant","Marsh & McLennan, 1166 AoA Re-stack - Floor 23"]},"2025-01":{"avgLeadTime":10.3,"medianLeadTime":11,"minLeadTime":8,"maxLeadTime":12,"dataPoints":3,"totalCost":287874.14,"projects":["Fidelity Investor Center - NYC - 320 Park Avenue - Relocation","Marsh & McLennan, 1166 AoA Re-stack - Floor 23"]}},"Air Outlets and Inlets":{"2025-06":{"avgLeadTime":2,"medianLeadTime":2,"minLeadTime":2,"maxLeadTime":2,"dataPoints":1,"totalCost":6761.43,"projects":["55 Hudson Yards Cooley 47th Floor"]},"2025-05":{"avgLeadTime":3,"medianLeadTime":2,"minLeadTime":1,"maxLeadTime":6,"dataPoints":3,"totalCost":225700,"projects":["Uber - 3 WTC, 40th Floor","55 Hudson Yards Cooley 47th Floor"]},"2025-04":{"avgLeadTime":6,"medianLeadTime":6,"minLeadTime":5,"maxLeadTime":7,"dataPoints":3,"totalCost":227290,"projects":["15 Central Park West- Amenity Space ","MLS 2 Penn Plaza 14th & 15th ","OPEN AI - Package 1 and 1A"]},"2025-03":{"avgLeadTime":4.7,"medianLeadTime":4,"minLeadTime":4,"maxLeadTime":8,"dataPoints":6,"totalCost":571420,"projects":["320 Park Ave. Flagstar Private Bank Ground & Second Floor ","Ronald McDonald House","JPMC 3203 Hanover (Palo Alto)","TJX - 770 Renovations (DD BUDGET) ","Intealth"]},"2025-02":{"avgLeadTime":4.6,"medianLeadTime":4.5,"minLeadTime":4,"maxLeadTime":6,"dataPoints":8,"totalCost":582050,"projects":["FS Investments ","15 Central Park West- Amenity Space ","Bulletin Building - Food Service Hall - IFC Bid/Update","Katherine's Restaurant","OPEN AI - Package 1 and 1A","MLS 2 Penn Plaza 14th & 15th "]}},"Diffusers, Registers, and Grilles":{"2025-06":{"avgLeadTime":2,"medianLeadTime":2,"minLeadTime":2,"maxLeadTime":2,"dataPoints":1,"totalCost":6761.43,"projects":["55 Hudson Yards Cooley 47th Floor"]},"2025-05":{"avgLeadTime":3.5,"medianLeadTime":3.5,"minLeadTime":1,"maxLeadTime":6,"dataPoints":2,"totalCost":20700,"projects":["55 Hudson Yards Cooley 47th Floor"]},"2025-04":{"avgLeadTime":5.1,"medianLeadTime":6,"minLeadTime":2,"maxLeadTime":6,"dataPoints":8,"totalCost":270135,"projects":["Spring Brook Country Clubouse Renovation","Fisher Brothers - 299 Park Ave, 3rd & 4th Floor","Fidelity Investor Center - NYC - 320 Park Avenue - Relocation","OPEN AI - Package 1 and 1A","Garfunkel Wild - Garden City, NY","Canell Spears","VUMC-MCJCHV 5th FL PICU Reno","Eastern University - Gym Expansion & Eagle Learning Center"]},"2025-03":{"avgLeadTime":4.5,"medianLeadTime":4,"minLeadTime":4,"maxLeadTime":8,"dataPoints":11,"totalCost":633430,"projects":["Fisher Brothers - 299 Park Ave, 3rd & 4th Floor","320 Park Ave. Flagstar Private Bank Ground & Second Floor ","Ronald McDonald House","JPMC 3203 Hanover (Palo Alto)","Verizon - North Seattle MSC Project","Garfunkel Wild - Garden City, NY","TJX - 770 Renovations (DD BUDGET) ","Novo Nordisk HQ: Thrive - Heart","LIC Warehouse 38-21 12TH St - DD","Intealth"]},"2025-02":{"avgLeadTime":4.7,"medianLeadTime":4,"minLeadTime":4,"maxLeadTime":6,"dataPoints":9,"totalCost":492850,"projects":["FS Investments ","Park Tower Management Offices and Amenities","OPEN AI - Package 1 and 1A","Canell Spears","Bank of America Springfield","Nuveen - 730 Third Ave - Floors 13-15"]},"2025-01":{"avgLeadTime":4.7,"medianLeadTime":4,"minLeadTime":3,"maxLeadTime":8,"dataPoints":7,"totalCost":179610,"projects":["Project Hank Retail - Shaver Hall","Fidelity Investor Center - NYC - 320 Park Avenue - Relocation","Marsh & McLennan, 1166 AoA Re-stack - Floor 23","JW Marriott Essex House - Emergency Generator"]}},"Air Terminal Units":{"2025-05":{"avgLeadTime":2.3,"medianLeadTime":2,"minLeadTime":1,"maxLeadTime":4,"dataPoints":3,"totalCost":205000,"projects":["Uber - 3 WTC, 40th Floor","55 Hudson Yards Cooley 47th Floor"]},"2025-04":{"avgLeadTime":5.4,"medianLeadTime":6,"minLeadTime":1,"maxLeadTime":7,"dataPoints":7,"totalCost":90015,"projects":["Spring Brook Country Clubouse Renovation","15 Central Park West- Amenity Space ","Canell Spears","Garfunkel Wild - Garden City, NY","OPEN AI - Package 1 and 1A","Fisher Brothers - 299 Park Ave, 3rd & 4th Floor","VUMC-MCJCHV 5th FL PICU Reno"]},"2025-03":{"avgLeadTime":4.3,"medianLeadTime":4,"minLeadTime":4,"maxLeadTime":6,"dataPoints":9,"totalCost":154120,"projects":["Fisher Brothers - 299 Park Ave, 3rd & 4th Floor","320 Park Ave. Flagstar Private Bank Ground & Second Floor ","Ronald McDonald House","JPMC 3203 Hanover (Palo Alto)","Garfunkel Wild - Garden City, NY","601W Companies -Harborside Co-Working Space"]},"2025-02":{"avgLeadTime":4.5,"medianLeadTime":4,"minLeadTime":3,"maxLeadTime":8,"dataPoints":12,"totalCost":722745,"projects":["FS Investments ","15 Central Park West- Amenity Space ","Bulletin Building - Food Service Hall - IFC Bid/Update","Katherine's Restaurant","JPMC NOC4 - Awarded","Park Tower Management Offices and Amenities","OPEN AI - Package 1 and 1A","Canell Spears","Nuveen - 730 Third Ave - Floors 13-15","Annaly Capital - 1211 AOA , 41st Floor"]},"2025-01":{"avgLeadTime":4.8,"medianLeadTime":4,"minLeadTime":0,"maxLeadTime":8,"dataPoints":12,"totalCost":269911,"projects":["Project Hank Retail - Shaver Hall","Annaly Capital - 1211 AOA , 41st Floor","JW Marriott Essex House - Emergency Generator","Fidelity Investor Center - NYC - 320 Park Avenue - Relocation","Bulletin Building Food Hall","Marsh & McLennan, 1166 AoA Re-stack - Floor 23","Uber - Suite A"]}},"Wall Registers and Grilles":{"2025-05":{"avgLeadTime":2,"medianLeadTime":2,"minLeadTime":2,"maxLeadTime":2,"dataPoints":1,"totalCost":205000,"projects":["Uber - 3 WTC, 40th Floor"]},"2025-03":{"avgLeadTime":4,"medianLeadTime":4,"minLeadTime":4,"maxLeadTime":4,"dataPoints":1,"totalCost":4120,"projects":["Verizon - North Seattle MSC Project"]},"2025-02":{"avgLeadTime":4,"medianLeadTime":4,"minLeadTime":4,"maxLeadTime":4,"dataPoints":1,"totalCost":262960,"projects":["FS Investments "]}},"HVAC Fans":{"2025-05":{"avgLeadTime":8,"medianLeadTime":9,"minLeadTime":6,"maxLeadTime":9,"dataPoints":3,"totalCost":26950,"projects":["First Energy-Dover Richboynton Service Center HVAC Upgrades","Provo Airport Phase II Expansion Final GMP"]},"2025-04":{"avgLeadTime":6.6,"medianLeadTime":6,"minLeadTime":0.5,"maxLeadTime":14,"dataPoints":26,"totalCost":600563,"projects":["Bank of America Office Interior Fit Out ","HCA Inspirada Free Standing ER Las Vegas, NV","Paul Weiss - 1345 AoA Project","AllianceBernstein TUS Building 54th Floor","Spring Brook Country Clubouse Renovation","Vornado - Penn 1 GMSC  1 - Level Space","First Energy DCC Renovation 5th floor & Concourse Level","MIT Lincoln Lab - D-480","Los Robles Hospital & Medical Center - Mechanical/TAB Investigation","Fisher Brothers - 299 Park Ave, 3rd & 4th Floor","Fidelity Investor Center - NYC - 320 Park Avenue - Relocation","OPEN AI - Package 1 and 1A","Canell Spears","15 Central Park West- Amenity Space ","Live Nation Comedy Clubs","KLA - 40 Gordon Lab/Office Infrastructure","SL Green - 100 Park Ave, 26th Fl Buildout","Davis Wright Tremaine LLP - 41st and 42nd Floors","1290 AoA - First Sentier Investors "]},"2025-03":{"avgLeadTime":6.3,"medianLeadTime":6,"minLeadTime":4,"maxLeadTime":10,"dataPoints":18,"totalCost":1331740,"projects":["Fisher Brothers - 299 Park Ave, 3rd & 4th Floor","320 Park Ave. Flagstar Private Bank Ground & Second Floor ","Revlon - 15 Nest - R&D relocation","Ronald McDonald House","JPMC 3203 Hanover (Palo Alto)","Yeshiva University Dental School- Phase 1  Fitout","TJX - 770 Renovations (DD BUDGET) ","Novo Nordisk HQ: Thrive - Heart","Carlyle- 25th floor ","LIC Warehouse 38-21 12TH St - DD","Wells Fargo- Floors 5 & 6 Fitout","451D-MA-UPS & CRAC Replacement","K&E PHL 1 Commerce Server Room ROM - UPS Lead Time","Intealth"]},"2025-02":{"avgLeadTime":5.3,"medianLeadTime":6,"minLeadTime":3,"maxLeadTime":8,"dataPoints":21,"totalCost":151024,"projects":["15 Central Park West- Amenity Space ","FS Investments ","Bulletin Building - Food Service Hall - IFC Bid/Update","JPMC NOC4 - Awarded","OPEN AI - Package 1 and 1A","Park Tower Management Offices and Amenities","MLS 2 Penn Plaza 14th & 15th ","Jane Street Capital - 3rd Floor Office Suite & Interview Rooms","Canell Spears","Bank of America: Retail Interior Renovations","104CC - Princeton Longevity MRI Room Expansion","Bank of America Springfield","Nuveen - 730 Third Ave - Floors 13-15","Haidilao - 2 Avery Street, Boston","Annaly Capital - 1211 AOA , 41st Floor"]},"2025-01":{"avgLeadTime":7,"medianLeadTime":6,"minLeadTime":3,"maxLeadTime":20,"dataPoints":16,"totalCost":203967,"projects":["Project Hank Retail - Shaver Hall","Annaly Capital - 1211 AOA , 41st Floor","Vornado- One Park Ave. 19th & 20th Fl. Whitebox","Marsh & McLennan, 1166 AoA Re-stack - Floor 23","Bulletin Building Food Hall","JW Marriott Essex House - Emergency Generator","Fidelity Investor Center - NYC - 320 Park Avenue - Relocation","Uber - Suite A","NYAC Solarium Project"]}},"Distribution Panelboards":{"2025-05":{"avgLeadTime":20,"medianLeadTime":20,"minLeadTime":20,"maxLeadTime":20,"dataPoints":1,"totalCost":28908.44,"projects":["Provo Airport Phase II Expansion Final GMP"]}},"Variable-Air-Volume Terminal Units":{"2025-05":{"avgLeadTime":1,"medianLeadTime":1,"minLeadTime":1,"maxLeadTime":1,"dataPoints":1,"totalCost":0,"projects":["55 Hudson Yards Cooley 47th Floor"]},"2025-04":{"avgLeadTime":5.8,"medianLeadTime":6,"minLeadTime":4,"maxLeadTime":7,"dataPoints":6,"totalCost":542420,"projects":["Paul Weiss - 1345 AoA Project","Bank of America Office Interior Fit Out ","Canell Spears","Garfunkel Wild - Garden City, NY","Fisher Brothers - 299 Park Ave, 3rd & 4th Floor","Eastern University - Gym Expansion & Eagle Learning Center"]},"2025-03":{"avgLeadTime":4.6,"medianLeadTime":4,"minLeadTime":4,"maxLeadTime":7,"dataPoints":10,"totalCost":174601,"projects":["Fisher Brothers - 299 Park Ave, 3rd & 4th Floor","Orlando Health-Lakeland FSED","320 Park Ave. Flagstar Private Bank Ground & Second Floor ","JPMC 3203 Hanover (Palo Alto)","Garfunkel Wild - Garden City, NY","Antares Capital - 280 Park Avenue","601W Companies -Harborside Co-Working Space","Novo Nordisk HQ: Thrive - Heart","Intealth"]},"2025-02":{"avgLeadTime":4.4,"medianLeadTime":4,"minLeadTime":4,"maxLeadTime":6,"dataPoints":8,"totalCost":479438,"projects":["FS Investments ","JPMC NOC4 - Awarded","Park Tower Management Offices and Amenities","Canell Spears","Bank of America Springfield","Nuveen - 730 Third Ave - Floors 13-15"]},"2025-01":{"avgLeadTime":4,"medianLeadTime":4,"minLeadTime":4,"maxLeadTime":4,"dataPoints":1,"totalCost":1840,"projects":["JW Marriott Essex House - Emergency Generator"]}},"Packaged Outdoor HVAC Equipment":{"2025-05":{"avgLeadTime":17.5,"medianLeadTime":17.5,"minLeadTime":16,"maxLeadTime":19,"dataPoints":2,"totalCost":566119,"projects":["Pasadena Central Library Seismic Retrofit & Historic Renovation","Revlon - 15 Nest - R&D relocation"]}},"Condensing Boilers":{"2025-05":{"avgLeadTime":4,"medianLeadTime":4,"minLeadTime":4,"maxLeadTime":4,"dataPoints":1,"totalCost":77900,"projects":["Provo Airport Phase II Expansion Final GMP"]}},"Water-Source Unitary Heat Pumps":{"2025-05":{"avgLeadTime":9.8,"medianLeadTime":10,"minLeadTime":9,"maxLeadTime":10,"dataPoints":4,"totalCost":1260231.6,"projects":["Apollo Global Management - Pre-Purchase Package","The Hoxton - 616 Ewing Ave"]},"2025-04":{"avgLeadTime":17.5,"medianLeadTime":17,"minLeadTime":15,"maxLeadTime":21,"dataPoints":4,"totalCost":472068.54,"projects":["Paul Weiss - 1345 AoA Project","SL Green - 100 Park Ave, 26th Fl Buildout","1290 AoA - First Sentier Investors "]},"2025-03":{"avgLeadTime":11.7,"medianLeadTime":11,"minLeadTime":9,"maxLeadTime":15,"dataPoints":3,"totalCost":231741.81,"projects":["Fisher Brothers - 299 Park Ave, 3rd & 4th Floor","320 Park Ave. Flagstar Private Bank Ground & Second Floor ","Yeshiva University Dental School- Phase 1  Fitout"]},"2025-02":{"avgLeadTime":9.8,"medianLeadTime":10,"minLeadTime":8,"maxLeadTime":12,"dataPoints":6,"totalCost":127403.99,"projects":["MLS 2 Penn Plaza 14th & 15th ","Canell Spears","Marsh & McLennan, 1166 AoA Re-stack - Floor 23"]},"2025-01":{"avgLeadTime":10.5,"medianLeadTime":11,"minLeadTime":8,"maxLeadTime":13,"dataPoints":6,"totalCost":509895.51,"projects":["Fidelity Investor Center - NYC - 320 Park Avenue - Relocation","(BGO) 313 Congress - 5th Floor Spec Suite","Annaly Capital - 1211 AOA , 41st Floor","Marsh & McLennan, 1166 AoA Re-stack - Floor 23"]}},"Air-Side Heat Recovery":{"2025-05":{"avgLeadTime":17,"medianLeadTime":17,"minLeadTime":17,"maxLeadTime":17,"dataPoints":1,"totalCost":918193,"projects":["Pasadena Central Library Seismic Retrofit & Historic Renovation"]}},"Air-Cooled, Modular Water Chillers":{"2025-05":{"avgLeadTime":19,"medianLeadTime":19,"minLeadTime":19,"maxLeadTime":19,"dataPoints":1,"totalCost":1,"projects":["Pasadena Central Library Seismic Retrofit & Historic Renovation"]}},"Low-Voltage Transformers":{"2025-05":{"avgLeadTime":5,"medianLeadTime":7,"minLeadTime":1,"maxLeadTime":7,"dataPoints":3,"totalCost":100861.70999999999,"projects":["Provo Airport Phase II Expansion Final GMP","Pasadena Central Library Seismic Retrofit & Historic Renovation"]}},"Low-Voltage Switchgear":{"2025-05":{"avgLeadTime":30,"medianLeadTime":30,"minLeadTime":30,"maxLeadTime":30,"dataPoints":1,"totalCost":147270.7,"projects":["Pasadena Central Library Seismic Retrofit & Historic Renovation"]}},"Switchboards":{"2025-05":{"avgLeadTime":30,"medianLeadTime":30,"minLeadTime":30,"maxLeadTime":30,"dataPoints":1,"totalCost":147270.7,"projects":["Pasadena Central Library Seismic Retrofit & Historic Renovation"]}},"Cooling Towers":{"2025-05":{"avgLeadTime":4.8,"medianLeadTime":4.5,"minLeadTime":1,"maxLeadTime":9,"dataPoints":4,"totalCost":642806,"projects":["The Hoxton - 616 Ewing Ave","New Pump Station Facility, CAPEX "]},"2025-03":{"avgLeadTime":15,"medianLeadTime":15,"minLeadTime":15,"maxLeadTime":15,"dataPoints":1,"totalCost":528675,"projects":["Vineyard Utah County HCI Phase 1A - Schematic Budget"]}},"Centrifugal HVAC Fans":{"2025-05":{"avgLeadTime":9,"medianLeadTime":9,"minLeadTime":9,"maxLeadTime":9,"dataPoints":2,"totalCost":11600,"projects":["Provo Airport Phase II Expansion Final GMP"]},"2025-04":{"avgLeadTime":10,"medianLeadTime":10,"minLeadTime":10,"maxLeadTime":10,"dataPoints":1,"totalCost":159720,"projects":["KLA - 40 Gordon Lab/Office Infrastructure"]},"2025-03":{"avgLeadTime":7.3,"medianLeadTime":7,"minLeadTime":5,"maxLeadTime":10,"dataPoints":9,"totalCost":1239260,"projects":["320 Park Ave. Flagstar Private Bank Ground & Second Floor ","Yeshiva University Dental School- Phase 1  Fitout","LIC Warehouse 38-21 12TH St - DD","Wells Fargo- Floors 5 & 6 Fitout","451D-MA-UPS & CRAC Replacement"]},"2025-02":{"avgLeadTime":5,"medianLeadTime":5,"minLeadTime":4,"maxLeadTime":6,"dataPoints":2,"totalCost":28980,"projects":["FS Investments "]}},"Busway Systems":{"2025-05":{"avgLeadTime":37.3,"medianLeadTime":31,"minLeadTime":5,"maxLeadTime":82,"dataPoints":4,"totalCost":3166454,"projects":["QTS - FTW1 - DC1 18MW Expansion"]}},"Enclosed Bus Assemblies":{"2025-05":{"avgLeadTime":37.3,"medianLeadTime":31,"minLeadTime":5,"maxLeadTime":82,"dataPoints":4,"totalCost":3166454,"projects":["QTS - FTW1 - DC1 18MW Expansion"]}},"Water Filtration Equipment":{"2025-05":{"avgLeadTime":4.5,"medianLeadTime":4.5,"minLeadTime":1,"maxLeadTime":8,"dataPoints":2,"totalCost":388820,"projects":["New Pump Station Facility, CAPEX "]}},"Electric Unit Heaters":{"2025-05":{"avgLeadTime":6,"medianLeadTime":6,"minLeadTime":6,"maxLeadTime":6,"dataPoints":1,"totalCost":1,"projects":["Orlando Health-Lakeland FSED"]},"2025-04":{"avgLeadTime":5.1,"medianLeadTime":5,"minLeadTime":4,"maxLeadTime":7,"dataPoints":8,"totalCost":89559,"projects":["Bank of America Office Interior Fit Out ","Spring Brook Country Clubouse Renovation","First Energy DCC Renovation 5th floor & Concourse Level","MLS 2 Penn Plaza 14th & 15th ","KLA - 40 Gordon Lab/Office Infrastructure","DHHA New Westside Clinic and Parking Structure - DD Budget"]},"2025-03":{"avgLeadTime":5.9,"medianLeadTime":6,"minLeadTime":4,"maxLeadTime":9,"dataPoints":7,"totalCost":197350,"projects":["Mitsui Fudosan America - 527 Madison Ave - 8th Floor","Spencer Stuart - 225 Franklin Mechanical/Pantry Updates","Ronald McDonald House","TJX - 770 Renovations (DD BUDGET) ","LIC Warehouse 38-21 12TH St - DD","Intealth"]},"2025-02":{"avgLeadTime":5,"medianLeadTime":5,"minLeadTime":5,"maxLeadTime":5,"dataPoints":1,"totalCost":2130,"projects":["MLS 2 Penn Plaza 14th & 15th "]}},"Medium-Voltage Pad-Mounted Transformers":{"2025-05":{"avgLeadTime":18,"medianLeadTime":18,"minLeadTime":18,"maxLeadTime":18,"dataPoints":1,"totalCost":127860,"projects":["Vineyard Prepurchase Package"]},"2025-04":{"avgLeadTime":18,"medianLeadTime":18,"minLeadTime":18,"maxLeadTime":18,"dataPoints":1,"totalCost":127860,"projects":["Vineyard Prepurchase Package"]}},"Medium-Voltage Transformers":{"2025-05":{"avgLeadTime":18,"medianLeadTime":18,"minLeadTime":18,"maxLeadTime":18,"dataPoints":1,"totalCost":127860,"projects":["Vineyard Prepurchase Package"]},"2025-04":{"avgLeadTime":18,"medianLeadTime":18,"minLeadTime":18,"maxLeadTime":18,"dataPoints":1,"totalCost":127860,"projects":["Vineyard Prepurchase Package"]}},"Large-Capacity, Computer-Room Air-Conditioners, Floor-Mounted Units":{"2025-04":{"avgLeadTime":8,"medianLeadTime":8,"minLeadTime":1,"maxLeadTime":15,"dataPoints":2,"totalCost":781902.19,"projects":["Paul Weiss - 1345 AoA Project"]}},"Medium-Voltage Switchgear":{"2025-04":{"avgLeadTime":50,"medianLeadTime":54,"minLeadTime":42,"maxLeadTime":54,"dataPoints":3,"totalCost":724612,"projects":["Vineyard Prepurchase Package"]}},"Unit Heaters":{"2025-04":{"avgLeadTime":5.2,"medianLeadTime":5,"minLeadTime":4,"maxLeadTime":7,"dataPoints":10,"totalCost":98934,"projects":["Bank of America Office Interior Fit Out ","HCA Inspirada Free Standing ER Las Vegas, NV","Spring Brook Country Clubouse Renovation","First Energy DCC Renovation 5th floor & Concourse Level","MLS 2 Penn Plaza 14th & 15th ","KLA - 40 Gordon Lab/Office Infrastructure","Eastern University - Gym Expansion & Eagle Learning Center","DHHA New Westside Clinic and Parking Structure - DD Budget"]},"2025-03":{"avgLeadTime":5.4,"medianLeadTime":5,"minLeadTime":4,"maxLeadTime":8,"dataPoints":5,"totalCost":110870,"projects":["Spencer Stuart - 225 Franklin Mechanical/Pantry Updates","320 Park Ave. Flagstar Private Bank Ground & Second Floor ","TJX - 770 Renovations (DD BUDGET) ","LIC Warehouse 38-21 12TH St - DD"]},"2025-02":{"avgLeadTime":5,"medianLeadTime":5,"minLeadTime":4,"maxLeadTime":6,"dataPoints":3,"totalCost":24239,"projects":["JPMC NOC4 - Awarded","MLS 2 Penn Plaza 14th & 15th ","Haidilao - 2 Avery Street, Boston"]},"2025-01":{"avgLeadTime":5,"medianLeadTime":5,"minLeadTime":4,"maxLeadTime":6,"dataPoints":2,"totalCost":19100,"projects":["680 5th Avenue Amenity Areas "]}},"Air Duct Accessories":{"2025-04":{"avgLeadTime":7,"medianLeadTime":7,"minLeadTime":7,"maxLeadTime":7,"dataPoints":1,"totalCost":12960,"projects":["HCA Inspirada Free Standing ER Las Vegas, NV"]}},"Duct Silencers":{"2025-04":{"avgLeadTime":7,"medianLeadTime":7,"minLeadTime":7,"maxLeadTime":7,"dataPoints":1,"totalCost":12960,"projects":["HCA Inspirada Free Standing ER Las Vegas, NV"]}},"Single-Duct VAV Terminal Units":{"2025-04":{"avgLeadTime":5.3,"medianLeadTime":5.5,"minLeadTime":4,"maxLeadTime":6,"dataPoints":4,"totalCost":509945,"projects":["Paul Weiss - 1345 AoA Project","Bank of America Office Interior Fit Out ","Vornado - Penn 1 GMSC  1 - Level Space"]},"2025-03":{"avgLeadTime":4,"medianLeadTime":4,"minLeadTime":4,"maxLeadTime":4,"dataPoints":1,"totalCost":4080,"projects":["Antares Capital - 280 Park Avenue"]},"2025-02":{"avgLeadTime":4,"medianLeadTime":4,"minLeadTime":4,"maxLeadTime":4,"dataPoints":1,"totalCost":253590,"projects":["FS Investments "]}},"Air-Source Unitary Heat Pumps":{"2025-04":{"avgLeadTime":6,"medianLeadTime":6,"minLeadTime":5,"maxLeadTime":7,"dataPoints":2,"totalCost":161311,"projects":["MITLL - Building B Roof Replacement","Live Nation Comedy Clubs"]}},"Humidifiers":{"2025-04":{"avgLeadTime":6,"medianLeadTime":6,"minLeadTime":2,"maxLeadTime":10,"dataPoints":3,"totalCost":57715,"projects":["Revlon - 15 Nest - R&D relocation","MIT Lincoln Lab - D-480","VUMC-MCJCHV 5th FL PICU Reno"]},"2025-03":{"avgLeadTime":4,"medianLeadTime":4,"minLeadTime":4,"maxLeadTime":4,"dataPoints":1,"totalCost":9400,"projects":["MIT Lincoln Lab - D-480"]},"2025-02":{"avgLeadTime":8,"medianLeadTime":8,"minLeadTime":8,"maxLeadTime":8,"dataPoints":1,"totalCost":13280,"projects":["104CC - Princeton Longevity MRI Room Expansion"]}},"Electromagnetic-Interference Filters":{"2025-04":{"avgLeadTime":10,"medianLeadTime":10,"minLeadTime":10,"maxLeadTime":10,"dataPoints":1,"totalCost":206500,"projects":["Paul Weiss - 1345 AoA Project"]}},"Electronic Air Cleaners":{"2025-04":{"avgLeadTime":10,"medianLeadTime":10,"minLeadTime":10,"maxLeadTime":10,"dataPoints":1,"totalCost":206500,"projects":["Paul Weiss - 1345 AoA Project"]}},"VRF Indoor Units - Ducted":{"2025-04":{"avgLeadTime":5,"medianLeadTime":5,"minLeadTime":5,"maxLeadTime":5,"dataPoints":1,"totalCost":125000,"projects":["Live Nation Comedy Clubs"]},"2025-03":{"avgLeadTime":7.3,"medianLeadTime":5,"minLeadTime":5,"maxLeadTime":12,"dataPoints":3,"totalCost":142100,"projects":["Garfunkel Wild - Garden City, NY","Carlyle - C3 Renovation + C1 & C2 Lobby"]},"2025-02":{"avgLeadTime":20,"medianLeadTime":20,"minLeadTime":20,"maxLeadTime":20,"dataPoints":1,"totalCost":330000,"projects":["People's Theatre Project (PTP) - GMP ITB"]},"2025-01":{"avgLeadTime":21.5,"medianLeadTime":21.5,"minLeadTime":20,"maxLeadTime":23,"dataPoints":2,"totalCost":888900,"projects":["People's Theatre Project (PTP) - GMP ITB"]}},"VRF Outdoor Units":{"2025-04":{"avgLeadTime":5,"medianLeadTime":5,"minLeadTime":5,"maxLeadTime":5,"dataPoints":1,"totalCost":125000,"projects":["Live Nation Comedy Clubs"]},"2025-03":{"avgLeadTime":8.5,"medianLeadTime":8.5,"minLeadTime":5,"maxLeadTime":12,"dataPoints":2,"totalCost":126600,"projects":["Garfunkel Wild - Garden City, NY"]}},"Indoor Central AHUs Modular":{"2025-04":{"avgLeadTime":9.5,"medianLeadTime":9.5,"minLeadTime":6,"maxLeadTime":13,"dataPoints":2,"totalCost":26201,"projects":["Ronald McDonald House","Live Nation Comedy Clubs"]},"2025-03":{"avgLeadTime":5,"medianLeadTime":5,"minLeadTime":5,"maxLeadTime":5,"dataPoints":1,"totalCost":65000,"projects":["Ronald McDonald House"]},"2025-01":{"avgLeadTime":14,"medianLeadTime":14,"minLeadTime":14,"maxLeadTime":14,"dataPoints":1,"totalCost":70500,"projects":["NYAC Solarium Project"]}},"Ductwork Specialties":{"2025-04":{"avgLeadTime":6.3,"medianLeadTime":6,"minLeadTime":6,"maxLeadTime":7,"dataPoints":3,"totalCost":217725,"projects":["MLS 2 Penn Plaza 14th & 15th ","Fidelity Investor Center - NYC - 320 Park Avenue - Relocation","Canell Spears"]},"2025-02":{"avgLeadTime":4.5,"medianLeadTime":4,"minLeadTime":4,"maxLeadTime":6,"dataPoints":6,"totalCost":223850,"projects":["Park Tower Management Offices and Amenities","MLS 2 Penn Plaza 14th & 15th ","Canell Spears","Bank of America Springfield","Nuveen - 730 Third Ave - Floors 13-15"]},"2025-01":{"avgLeadTime":4.7,"medianLeadTime":4,"minLeadTime":3,"maxLeadTime":8,"dataPoints":7,"totalCost":179610,"projects":["Project Hank Retail - Shaver Hall","Fidelity Investor Center - NYC - 320 Park Avenue - Relocation","Marsh & McLennan, 1166 AoA Re-stack - Floor 23","JW Marriott Essex House - Emergency Generator"]}},"Variable Frequency Drives":{"2025-04":{"avgLeadTime":6,"medianLeadTime":6,"minLeadTime":6,"maxLeadTime":6,"dataPoints":1,"totalCost":15290,"projects":["Los Robles Hospital & Medical Center - Mechanical/TAB Investigation"]}},"Chemical Water Treatment":{"2025-04":{"avgLeadTime":4,"medianLeadTime":4,"minLeadTime":4,"maxLeadTime":4,"dataPoints":1,"totalCost":2680,"projects":["Los Robles Hospital & Medical Center - Mechanical/TAB Investigation"]}},"Hydronic Piping Specialties":{"2025-04":{"avgLeadTime":4,"medianLeadTime":4,"minLeadTime":4,"maxLeadTime":4,"dataPoints":1,"totalCost":2680,"projects":["Los Robles Hospital & Medical Center - Mechanical/TAB Investigation"]},"2025-03":{"avgLeadTime":5,"medianLeadTime":5,"minLeadTime":5,"maxLeadTime":5,"dataPoints":1,"totalCost":45480,"projects":["TJX - 770 Renovations (DD BUDGET) "]}},"Factory-Fabricated Air-Handling Units":{"2025-04":{"avgLeadTime":26,"medianLeadTime":26,"minLeadTime":26,"maxLeadTime":26,"dataPoints":1,"totalCost":275360,"projects":["Los Robles Hospital & Medical Center - Mechanical/TAB Investigation"]},"2025-02":{"avgLeadTime":20,"medianLeadTime":20,"minLeadTime":20,"maxLeadTime":20,"dataPoints":1,"totalCost":330000,"projects":["People's Theatre Project (PTP) - GMP ITB"]},"2025-01":{"avgLeadTime":21.5,"medianLeadTime":21.5,"minLeadTime":20,"maxLeadTime":23,"dataPoints":2,"totalCost":888900,"projects":["People's Theatre Project (PTP) - GMP ITB"]}},"Air Coils":{"2025-04":{"avgLeadTime":5,"medianLeadTime":5,"minLeadTime":5,"maxLeadTime":5,"dataPoints":1,"totalCost":4870,"projects":["Garfunkel Wild - Garden City, NY"]},"2025-03":{"avgLeadTime":6,"medianLeadTime":6,"minLeadTime":6,"maxLeadTime":6,"dataPoints":1,"totalCost":3610,"projects":["Garfunkel Wild - Garden City, NY"]}},"Duct Liners":{"2025-04":{"avgLeadTime":4.5,"medianLeadTime":4.5,"minLeadTime":4,"maxLeadTime":5,"dataPoints":2,"totalCost":2985,"projects":["Vornado - Penn 1 GMSC  1 - Level Space"]}},"Kitchen Hoods":{"2025-04":{"avgLeadTime":8,"medianLeadTime":8,"minLeadTime":8,"maxLeadTime":8,"dataPoints":1,"totalCost":20750,"projects":["Live Nation Comedy Clubs"]},"2025-03":{"avgLeadTime":8,"medianLeadTime":8,"minLeadTime":6,"maxLeadTime":10,"dataPoints":2,"totalCost":149370,"projects":["Wells Fargo- Floors 5 & 6 Fitout"]},"2025-02":{"avgLeadTime":5,"medianLeadTime":5,"minLeadTime":5,"maxLeadTime":5,"dataPoints":1,"totalCost":5190,"projects":["Bulletin Building - Food Service Hall - IFC Bid/Update"]}},"Self-Contained Air Conditioners":{"2025-04":{"avgLeadTime":12.5,"medianLeadTime":12.5,"minLeadTime":8,"maxLeadTime":17,"dataPoints":2,"totalCost":36475,"projects":["Davis Wright Tremaine LLP - 41st and 42nd Floors"]},"2025-03":{"avgLeadTime":9,"medianLeadTime":9,"minLeadTime":9,"maxLeadTime":9,"dataPoints":1,"totalCost":32400,"projects":["Fisher Brothers - 299 Park Ave, 3rd & 4th Floor"]},"2025-02":{"avgLeadTime":12,"medianLeadTime":12,"minLeadTime":12,"maxLeadTime":12,"dataPoints":1,"totalCost":85000,"projects":["Haidilao - 2 Avery Street, Boston"]},"2025-01":{"avgLeadTime":13,"medianLeadTime":13,"minLeadTime":13,"maxLeadTime":13,"dataPoints":1,"totalCost":63964.06,"projects":["Annaly Capital - 1211 AOA , 41st Floor"]}},"Radiant Heating Units":{"2025-04":{"avgLeadTime":1,"medianLeadTime":1,"minLeadTime":1,"maxLeadTime":1,"dataPoints":1,"totalCost":5350,"projects":["VUMC-MCJCHV 5th FL PICU Reno"]},"2025-03":{"avgLeadTime":8,"medianLeadTime":8,"minLeadTime":8,"maxLeadTime":8,"dataPoints":1,"totalCost":0,"projects":["Wells Fargo- Floors 5 & 6 Fitout"]},"2025-02":{"avgLeadTime":5,"medianLeadTime":5,"minLeadTime":5,"maxLeadTime":5,"dataPoints":1,"totalCost":1660,"projects":["Bank of America Springfield"]}},"Custom Packaged Rooftop AC Unit":{"2025-04":{"avgLeadTime":13.7,"medianLeadTime":12,"minLeadTime":9,"maxLeadTime":20,"dataPoints":3,"totalCost":213750,"projects":["RedHat RTU"]},"2025-03":{"avgLeadTime":6,"medianLeadTime":6,"minLeadTime":6,"maxLeadTime":6,"dataPoints":1,"totalCost":51900,"projects":["RedHat RTU"]}},"Computer-Room Air-Conditioners, Ceiling Mounted Units":{"2025-04":{"avgLeadTime":12.5,"medianLeadTime":12.5,"minLeadTime":8,"maxLeadTime":17,"dataPoints":2,"totalCost":61830,"projects":["St. Mark's Hospital - New PET CT Project"]}},"Cabinet Unit Heaters":{"2025-04":{"avgLeadTime":7,"medianLeadTime":7,"minLeadTime":7,"maxLeadTime":7,"dataPoints":1,"totalCost":1,"projects":["DHHA New Westside Clinic and Parking Structure - DD Budget"]},"2025-03":{"avgLeadTime":6,"medianLeadTime":6,"minLeadTime":6,"maxLeadTime":6,"dataPoints":1,"totalCost":93520,"projects":["LIC Warehouse 38-21 12TH St - DD"]},"2025-02":{"avgLeadTime":6,"medianLeadTime":6,"minLeadTime":6,"maxLeadTime":6,"dataPoints":1,"totalCost":1760,"projects":["JPMC NOC4 - Awarded"]}},"Electric Boilers":{"2025-03":{"avgLeadTime":7.5,"medianLeadTime":7.5,"minLeadTime":6,"maxLeadTime":9,"dataPoints":2,"totalCost":79970,"projects":["Mitsui Fudosan America - 527 Madison Ave - 8th Floor"]}},"Air-Cooled Scroll Water Chillers":{"2025-03":{"avgLeadTime":13.3,"medianLeadTime":15.5,"minLeadTime":1,"maxLeadTime":21,"dataPoints":4,"totalCost":1595867,"projects":["Verizon - North Seattle MSC Project","LIC Warehouse 38-21 12TH St - DD"]},"2025-02":{"avgLeadTime":21,"medianLeadTime":20,"minLeadTime":10,"maxLeadTime":33,"dataPoints":3,"totalCost":9677800,"projects":["850 3rd Ave HPS Investment Partners Project","Sacred Heart University West Campus - East Building Fairfield Ct"]},"2025-01":{"avgLeadTime":11,"medianLeadTime":11,"minLeadTime":2,"maxLeadTime":20,"dataPoints":2,"totalCost":1245000,"projects":["Sacred Heart University West Campus - East Building Fairfield Ct"]}},"Scroll Water Chillers":{"2025-03":{"avgLeadTime":11,"medianLeadTime":11,"minLeadTime":1,"maxLeadTime":21,"dataPoints":2,"totalCost":547475,"projects":["Verizon - North Seattle MSC Project"]}},"Electric-Resistance Air Coils":{"2025-03":{"avgLeadTime":6,"medianLeadTime":6,"minLeadTime":4,"maxLeadTime":8,"dataPoints":2,"totalCost":6330,"projects":["320 Park Ave. Flagstar Private Bank Ground & Second Floor "]}},"Finned-Tube Radiation Heaters":{"2025-03":{"avgLeadTime":6,"medianLeadTime":6,"minLeadTime":6,"maxLeadTime":6,"dataPoints":1,"totalCost":5980,"projects":["Ronald McDonald House"]}},"Radiators":{"2025-03":{"avgLeadTime":5,"medianLeadTime":5,"minLeadTime":5,"maxLeadTime":5,"dataPoints":1,"totalCost":3050,"projects":["320 Park Ave. Flagstar Private Bank Ground & Second Floor "]}},"Security Lighting":{"2025-03":{"avgLeadTime":5,"medianLeadTime":5,"minLeadTime":5,"maxLeadTime":5,"dataPoints":1,"totalCost":3050,"projects":["320 Park Ave. Flagstar Private Bank Ground & Second Floor "]}},"Packaged Generator Assemblies":{"2025-03":{"avgLeadTime":45,"medianLeadTime":45,"minLeadTime":45,"maxLeadTime":45,"dataPoints":1,"totalCost":655805,"projects":["Orlando Health-Lakeland FSED"]},"2025-01":{"avgLeadTime":39.3,"medianLeadTime":30,"minLeadTime":27,"maxLeadTime":61,"dataPoints":3,"totalCost":1768701,"projects":["JW Marriott Essex House - Emergency Generator"]}},"Automatic Transfer Switches":{"2025-03":{"avgLeadTime":23.4,"medianLeadTime":21,"minLeadTime":2,"maxLeadTime":40,"dataPoints":5,"totalCost":1260775,"projects":["Orlando Health-Lakeland FSED","Vineyard Utah County HCI Phase 1A - Schematic Budget","LIC Warehouse 38-21 12TH St - DD"]}},"Air-to-Air Energy Recovery Equipment":{"2025-03":{"avgLeadTime":21,"medianLeadTime":21,"minLeadTime":21,"maxLeadTime":21,"dataPoints":1,"totalCost":1519618,"projects":["TJX - 770 Renovations (DD BUDGET) "]}},"Energy Recovery Units":{"2025-03":{"avgLeadTime":21,"medianLeadTime":21,"minLeadTime":21,"maxLeadTime":21,"dataPoints":1,"totalCost":1519618,"projects":["TJX - 770 Renovations (DD BUDGET) "]}},"Steam-To-Water Heat Exchangers":{"2025-03":{"avgLeadTime":9,"medianLeadTime":9,"minLeadTime":8,"maxLeadTime":10,"dataPoints":2,"totalCost":44860,"projects":["Yeshiva University Dental School- Phase 1  Fitout"]}},"Radiant-Heating Electric Panels":{"2025-03":{"avgLeadTime":4,"medianLeadTime":4,"minLeadTime":4,"maxLeadTime":4,"dataPoints":1,"totalCost":3440,"projects":["TJX - 770 Renovations (DD BUDGET) "]}},"Electrical Load Bank":{"2025-03":{"avgLeadTime":35.5,"medianLeadTime":35.5,"minLeadTime":1,"maxLeadTime":70,"dataPoints":2,"totalCost":4878757,"projects":["Vineyard Utah County HCI Phase 1A - Schematic Budget"]}},"Engine Generators":{"2025-03":{"avgLeadTime":35.5,"medianLeadTime":35.5,"minLeadTime":1,"maxLeadTime":70,"dataPoints":2,"totalCost":4878757,"projects":["Vineyard Utah County HCI Phase 1A - Schematic Budget"]}},"Packaged Terminal Air Conditioners":{"2025-03":{"avgLeadTime":4,"medianLeadTime":4,"minLeadTime":4,"maxLeadTime":4,"dataPoints":1,"totalCost":28550,"projects":["601W Companies -Harborside Co-Working Space"]}},"Ceiling Diffusers":{"2025-03":{"avgLeadTime":4,"medianLeadTime":4,"minLeadTime":4,"maxLeadTime":4,"dataPoints":1,"totalCost":16330,"projects":["Novo Nordisk HQ: Thrive - Heart"]}},"Hot Water Unit Heaters":{"2025-03":{"avgLeadTime":8,"medianLeadTime":8,"minLeadTime":8,"maxLeadTime":8,"dataPoints":1,"totalCost":0,"projects":["Wells Fargo- Floors 5 & 6 Fitout"]}},"Diesel-Engine-Driven Generator Sets":{"2025-03":{"avgLeadTime":35.3,"medianLeadTime":33,"minLeadTime":33,"maxLeadTime":40,"dataPoints":3,"totalCost":1927453,"projects":["LIC Warehouse 38-21 12TH St - DD"]}},"Air Curtains":{"2025-02":{"avgLeadTime":5,"medianLeadTime":5,"minLeadTime":5,"maxLeadTime":5,"dataPoints":1,"totalCost":4570,"projects":["Bulletin Building - Food Service Hall - IFC Bid/Update"]}},"Central HVAC Equipment":{"2025-02":{"avgLeadTime":24,"medianLeadTime":24,"minLeadTime":24,"maxLeadTime":24,"dataPoints":2,"totalCost":0,"projects":["850 3rd Ave HPS Investment Partners Project"]}},"Custom Heating and Ventilating Makeup-Air Units":{"2025-02":{"avgLeadTime":24,"medianLeadTime":24,"minLeadTime":24,"maxLeadTime":24,"dataPoints":1,"totalCost":0,"projects":["850 3rd Ave HPS Investment Partners Project"]}},"Vertical-Mounted, Double-Suction Centrifugal Hydronic Pumps":{"2025-02":{"avgLeadTime":3,"medianLeadTime":3,"minLeadTime":3,"maxLeadTime":3,"dataPoints":1,"totalCost":11500,"projects":["FS Investments "]}},"Decentralized Unitary HVAC Equipment":{"2025-02":{"avgLeadTime":24,"medianLeadTime":24,"minLeadTime":24,"maxLeadTime":24,"dataPoints":1,"totalCost":0,"projects":["850 3rd Ave HPS Investment Partners Project"]}},"Air-Cooled Centrifugal Water Chillers":{"2025-02":{"avgLeadTime":26.5,"medianLeadTime":26.5,"minLeadTime":20,"maxLeadTime":33,"dataPoints":2,"totalCost":2693200,"projects":["Sacred Heart University West Campus - East Building Fairfield Ct"]},"2025-01":{"avgLeadTime":20,"medianLeadTime":20,"minLeadTime":20,"maxLeadTime":20,"dataPoints":1,"totalCost":622500,"projects":["Sacred Heart University West Campus - East Building Fairfield Ct"]}},"VRF Indoor Units - Ductless":{"2025-02":{"avgLeadTime":20,"medianLeadTime":20,"minLeadTime":20,"maxLeadTime":20,"dataPoints":1,"totalCost":330000,"projects":["People's Theatre Project (PTP) - GMP ITB"]},"2025-01":{"avgLeadTime":21.5,"medianLeadTime":21.5,"minLeadTime":20,"maxLeadTime":23,"dataPoints":2,"totalCost":888900,"projects":["People's Theatre Project (PTP) - GMP ITB"]}},"Water-Cooled Centrifugal Water Chillers":{"2025-01":{"avgLeadTime":18,"medianLeadTime":18,"minLeadTime":18,"maxLeadTime":18,"dataPoints":1,"totalCost":1863000,"projects":["SSUH - Boiler and Chiller Plant Replacement (52100495es)"]}}};
+        const manufacturerData = {"Stulz":{"2025-06":{"avgLeadTime":11,"medianLeadTime":11,"minLeadTime":11,"maxLeadTime":11,"dataPoints":3,"totalCost":82790,"componentTypes":["Computer-Room Air-Conditioners"]},"2025-05":{"avgLeadTime":9.7,"medianLeadTime":12,"minLeadTime":1,"maxLeadTime":16,"dataPoints":3,"totalCost":282700,"componentTypes":["Computer-Room Air-Conditioners"]},"2025-04":{"avgLeadTime":18.5,"medianLeadTime":18.5,"minLeadTime":15,"maxLeadTime":22,"dataPoints":6,"totalCost":657950,"componentTypes":["Computer-Room Air-Conditioners","Water-Source Heat Pumps","Computer-Room Air-Conditioners, Ceiling Mounted Units"]},"2025-03":{"avgLeadTime":16,"medianLeadTime":16,"minLeadTime":16,"maxLeadTime":16,"dataPoints":1,"totalCost":43500,"componentTypes":["Computer-Room Air-Conditioners"]},"2025-02":{"avgLeadTime":17,"medianLeadTime":17,"minLeadTime":17,"maxLeadTime":17,"dataPoints":1,"totalCost":199550,"componentTypes":["Computer-Room Air-Conditioners"]}},"Above Air":{"2025-06":{"avgLeadTime":16,"medianLeadTime":16,"minLeadTime":16,"maxLeadTime":16,"dataPoints":1,"totalCost":47469.5,"componentTypes":["Computer-Room Air-Conditioners"]},"2025-04":{"avgLeadTime":19,"medianLeadTime":19,"minLeadTime":18,"maxLeadTime":20,"dataPoints":2,"totalCost":514436,"componentTypes":["Computer-Room Air-Conditioners"]},"2025-03":{"avgLeadTime":18.5,"medianLeadTime":18.5,"minLeadTime":17,"maxLeadTime":20,"dataPoints":2,"totalCost":59900,"componentTypes":["Computer-Room Air-Conditioners"]},"2025-02":{"avgLeadTime":20.3,"medianLeadTime":20,"minLeadTime":20,"maxLeadTime":21,"dataPoints":3,"totalCost":812500,"componentTypes":["Computer-Room Air-Conditioners"]}},"Vertiv":{"2025-06":{"avgLeadTime":8,"medianLeadTime":8,"minLeadTime":8,"maxLeadTime":8,"dataPoints":2,"totalCost":53000,"componentTypes":["Computer-Room Air-Conditioners"]},"2025-05":{"avgLeadTime":6.7,"medianLeadTime":9,"minLeadTime":1,"maxLeadTime":10,"dataPoints":3,"totalCost":261700,"componentTypes":["Computer-Room Air-Conditioners"]},"2025-04":{"avgLeadTime":5.3,"medianLeadTime":8,"minLeadTime":1,"maxLeadTime":9,"dataPoints":7,"totalCost":2401660,"componentTypes":["Computer-Room Air-Conditioners","Large-Capacity, Computer-Room Air-Conditioners, Floor-Mounted Units","Water-Source Heat Pumps","Computer-Room Air-Conditioners, Ceiling Mounted Units"]},"2025-03":{"avgLeadTime":9.3,"medianLeadTime":9,"minLeadTime":9,"maxLeadTime":10,"dataPoints":4,"totalCost":672230,"componentTypes":["Computer-Room Air-Conditioners"]},"2025-02":{"avgLeadTime":9,"medianLeadTime":9,"minLeadTime":9,"maxLeadTime":9,"dataPoints":3,"totalCost":1019300,"componentTypes":["Computer-Room Air-Conditioners"]},"2025-01":{"avgLeadTime":5.5,"medianLeadTime":5.5,"minLeadTime":1,"maxLeadTime":10,"dataPoints":2,"totalCost":72000,"componentTypes":["Computer-Room Air-Conditioners"]}},"Armstrong":{"2025-06":{"avgLeadTime":10.6,"medianLeadTime":11,"minLeadTime":9,"maxLeadTime":11,"dataPoints":5,"totalCost":585000,"componentTypes":["Shell-Type, Liquid-to-Liquid Heat Exchangers","Hydronic Pumps","Base-Mounted, Centrifugal Hydronic Pumps","In-Line Centrifugal Hydronic Pumps"]},"2025-04":{"avgLeadTime":10,"medianLeadTime":10,"minLeadTime":10,"maxLeadTime":10,"dataPoints":1,"totalCost":9340,"componentTypes":["Humidifiers"]},"2025-03":{"avgLeadTime":9.3,"medianLeadTime":10,"minLeadTime":8,"maxLeadTime":10,"dataPoints":3,"totalCost":94500,"componentTypes":["Steam-To-Water Heat Exchangers","Hydronic Pumps","In-Line Centrifugal Hydronic Pumps"]},"2025-02":{"avgLeadTime":3,"medianLeadTime":3,"minLeadTime":3,"maxLeadTime":3,"dataPoints":3,"totalCost":34500,"componentTypes":["Hydronic Pumps","In-Line Centrifugal Hydronic Pumps","Vertical-Mounted, Double-Suction Centrifugal Hydronic Pumps"]}},"Alfa Laval":{"2025-06":{"avgLeadTime":11,"medianLeadTime":11,"minLeadTime":11,"maxLeadTime":11,"dataPoints":1,"totalCost":208000,"componentTypes":["Plate-Type, Liquid-to-Liquid Heat Exchangers"]},"2025-03":{"avgLeadTime":10,"medianLeadTime":10,"minLeadTime":10,"maxLeadTime":10,"dataPoints":1,"totalCost":15000,"componentTypes":["Plate-Type, Liquid-to-Liquid Heat Exchangers"]}},"Cambridge Air Solutions":{"2025-06":{"avgLeadTime":8,"medianLeadTime":8,"minLeadTime":8,"maxLeadTime":8,"dataPoints":1,"totalCost":238818,"componentTypes":["Packaged, Outdoor, Heating-Only Makeup-Air Units"]}},"Trane":{"2025-06":{"avgLeadTime":16.4,"medianLeadTime":11,"minLeadTime":9,"maxLeadTime":37,"dataPoints":5,"totalCost":1124018,"componentTypes":["Packaged Rooftop Air-Conditioning Units","Air-Cooled, Rotary-Screw Water Chillers","Dedicated Outdoor-Air Units"]},"2025-05":{"avgLeadTime":13.9,"medianLeadTime":16,"minLeadTime":6,"maxLeadTime":19,"dataPoints":15,"totalCost":3328555,"componentTypes":["Packaged Rooftop Air-Conditioning Units","Fan Coil Units","Indoor Central-Station Air-Handling Units","Packaged Outdoor HVAC Equipment","Water-Source Heat Pumps","Water-Source Unitary Heat Pumps","Air-Side Heat Recovery","Air-Cooled, Modular Water Chillers","Dedicated Outdoor-Air Units","Electric Unit Heaters"]},"2025-04":{"avgLeadTime":10.5,"medianLeadTime":7,"minLeadTime":6,"maxLeadTime":20,"dataPoints":10,"totalCost":338306,"componentTypes":["Air-Source Unitary Heat Pumps","Packaged Rooftop Air-Conditioning Units","Indoor Central AHUs Modular","Split System Air Conditioners","Water-Source Heat Pumps","Cabinet Unit Heaters","Electric Unit Heaters","Unit Heaters","Custom Packaged Rooftop AC Unit"]},"2025-03":{"avgLeadTime":16.3,"medianLeadTime":17,"minLeadTime":7,"maxLeadTime":29,"dataPoints":9,"totalCost":3990510,"componentTypes":["Fan Coil Units","Split System Air Conditioners","Packaged Rooftop Air-Conditioning Units","Variable-Air-Volume Terminal Units","Water-Source Heat Pumps","Air-to-Air Energy Recovery Equipment","Energy Recovery Units","Water-Source Unitary Heat Pumps"]},"2025-02":{"avgLeadTime":7.8,"medianLeadTime":8,"minLeadTime":5,"maxLeadTime":10,"dataPoints":6,"totalCost":161058,"componentTypes":["Water-Source Unitary Heat Pumps","Water-Source Heat Pumps","Packaged Rooftop Air-Conditioning Units","Variable-Air-Volume Terminal Units","Fan Coil Units"]},"2025-01":{"avgLeadTime":9.3,"medianLeadTime":8,"minLeadTime":5,"maxLeadTime":14,"dataPoints":7,"totalCost":767054,"componentTypes":["Water-Source Heat Pumps","Water-Source Unitary Heat Pumps","Air Terminal Units","Split System Air Conditioners","Indoor Central AHUs Modular"]}},"Mitsubishi":{"2025-06":{"avgLeadTime":7,"medianLeadTime":7,"minLeadTime":7,"maxLeadTime":7,"dataPoints":5,"totalCost":5,"componentTypes":["Split System Air Conditioners","Fan Coil Units","Variable Refrigerant Flow Systems","Water-Source Heat Pumps"]},"2025-05":{"avgLeadTime":7.8,"medianLeadTime":8,"minLeadTime":6,"maxLeadTime":9,"dataPoints":6,"totalCost":187027,"componentTypes":["Split System Air Conditioners","Variable Refrigerant Flow Systems"]},"2025-02":{"avgLeadTime":4,"medianLeadTime":4,"minLeadTime":4,"maxLeadTime":4,"dataPoints":3,"totalCost":68862,"componentTypes":["Fan Coil Units","Split System Air Conditioners","Variable Refrigerant Flow Systems"]},"2025-01":{"avgLeadTime":4,"medianLeadTime":4,"minLeadTime":4,"maxLeadTime":4,"dataPoints":1,"totalCost":9192,"componentTypes":["Split System Air Conditioners"]}},"Daikin":{"2025-06":{"avgLeadTime":16.4,"medianLeadTime":20,"minLeadTime":1,"maxLeadTime":21,"dataPoints":5,"totalCost":1332200,"componentTypes":["Split System Air Conditioners","Packaged Rooftop Air-Conditioning Units","Indoor Central-Station Air-Handling Units","Packaged, Outdoor, Heating-Only Makeup-Air Units","Small-Capacity Self-Contained Air-Conditioners"]},"2025-05":{"avgLeadTime":15.8,"medianLeadTime":18,"minLeadTime":10,"maxLeadTime":22,"dataPoints":5,"totalCost":2529303.6,"componentTypes":["Air-Cooled, Rotary-Screw Water Chillers","Water-Source Unitary Heat Pumps","Packaged Rooftop Air-Conditioning Units","Dedicated Outdoor-Air Units"]},"2025-04":{"avgLeadTime":26.3,"medianLeadTime":25,"minLeadTime":5,"maxLeadTime":50,"dataPoints":4,"totalCost":3277704,"componentTypes":["Packaged Rooftop Air-Conditioning Units","Variable Refrigerant Flow Systems","Dedicated Outdoor-Air Units"]},"2025-03":{"avgLeadTime":2.4,"medianLeadTime":1,"minLeadTime":1,"maxLeadTime":8,"dataPoints":5,"totalCost":726400,"componentTypes":["Air-Cooled Scroll Water Chillers","Scroll Water Chillers","Fan Coil Units","Split System Air Conditioners"]},"2025-02":{"avgLeadTime":5.5,"medianLeadTime":5.5,"minLeadTime":5,"maxLeadTime":6,"dataPoints":2,"totalCost":31600,"componentTypes":["Variable Refrigerant Flow Systems","Split System Air Conditioners"]}},"Krueger":{"2025-06":{"avgLeadTime":2.7,"medianLeadTime":2,"minLeadTime":2,"maxLeadTime":4,"dataPoints":3,"totalCost":21455.190000000002,"componentTypes":["Fan-Powered VAV Terminal Units","Air Outlets and Inlets","Diffusers, Registers, and Grilles"]},"2025-04":{"avgLeadTime":5.5,"medianLeadTime":6,"minLeadTime":4,"maxLeadTime":6,"dataPoints":8,"totalCost":1028560,"componentTypes":["Single-Duct VAV Terminal Units","Variable-Air-Volume Terminal Units","Air Terminal Units","Diffusers, Registers, and Grilles"]},"2025-03":{"avgLeadTime":4,"medianLeadTime":4,"minLeadTime":4,"maxLeadTime":4,"dataPoints":33,"totalCost":1439770,"componentTypes":["Air Outlets and Inlets","Air Terminal Units","Diffusers, Registers, and Grilles","Variable-Air-Volume Terminal Units","Wall Registers and Grilles","Single-Duct VAV Terminal Units","Fan-Powered VAV Terminal Units","Packaged Terminal Air Conditioners","Ceiling Diffusers"]},"2025-02":{"avgLeadTime":4.2,"medianLeadTime":4,"minLeadTime":4,"maxLeadTime":5,"dataPoints":33,"totalCost":2753960,"componentTypes":["Air Terminal Units","Fan-Powered VAV Terminal Units","Single-Duct VAV Terminal Units","Variable-Air-Volume Terminal Units","Air Outlets and Inlets","Diffusers, Registers, and Grilles","Wall Registers and Grilles","Ductwork Specialties"]},"2025-01":{"avgLeadTime":4,"medianLeadTime":4,"minLeadTime":4,"maxLeadTime":4,"dataPoints":13,"totalCost":225180,"componentTypes":["Air Terminal Units","Variable-Air-Volume Terminal Units","Diffusers, Registers, and Grilles","Ductwork Specialties"]}},"Titus":{"2025-05":{"avgLeadTime":1.9,"medianLeadTime":1.5,"minLeadTime":1,"maxLeadTime":4,"dataPoints":10,"totalCost":642800,"componentTypes":["Air Outlets and Inlets","Air Terminal Units","Wall Registers and Grilles","Fan-Powered VAV Terminal Units","Variable-Air-Volume Terminal Units","Diffusers, Registers, and Grilles"]}},"Greenheck":{"2025-05":{"avgLeadTime":6,"medianLeadTime":6,"minLeadTime":6,"maxLeadTime":6,"dataPoints":1,"totalCost":15350,"componentTypes":["HVAC Fans"]},"2025-04":{"avgLeadTime":7,"medianLeadTime":7,"minLeadTime":6,"maxLeadTime":8,"dataPoints":2,"totalCost":177950,"componentTypes":["HVAC Fans"]},"2025-03":{"avgLeadTime":7,"medianLeadTime":7,"minLeadTime":7,"maxLeadTime":7,"dataPoints":3,"totalCost":23600,"componentTypes":["HVAC Fans","Centrifugal HVAC Fans"]},"2025-02":{"avgLeadTime":6,"medianLeadTime":6,"minLeadTime":6,"maxLeadTime":6,"dataPoints":4,"totalCost":11346,"componentTypes":["HVAC Fans"]},"2025-01":{"avgLeadTime":5.6,"medianLeadTime":6,"minLeadTime":3,"maxLeadTime":8,"dataPoints":5,"totalCost":28710,"componentTypes":["HVAC Fans"]}},"Anemostat":{"2025-05":{"avgLeadTime":6,"medianLeadTime":6,"minLeadTime":6,"maxLeadTime":6,"dataPoints":3,"totalCost":20100,"componentTypes":["Air Outlets and Inlets","Diffusers, Registers, and Grilles","Fan-Powered VAV Terminal Units"]},"2025-04":{"avgLeadTime":6.1,"medianLeadTime":6,"minLeadTime":5,"maxLeadTime":7,"dataPoints":17,"totalCost":751955,"componentTypes":["Air Outlets and Inlets","Air Terminal Units","Variable-Air-Volume Terminal Units","Ductwork Specialties","Diffusers, Registers, and Grilles"]},"2025-01":{"avgLeadTime":6.3,"medianLeadTime":6,"minLeadTime":6,"maxLeadTime":7,"dataPoints":3,"totalCost":94700,"componentTypes":["Diffusers, Registers, and Grilles","Ductwork Specialties","Air Terminal Units"]}},"Square D":{"2025-05":{"avgLeadTime":20,"medianLeadTime":20,"minLeadTime":20,"maxLeadTime":20,"dataPoints":1,"totalCost":28908.44,"componentTypes":["Distribution Panelboards"]}},"Aerco":{"2025-05":{"avgLeadTime":4,"medianLeadTime":4,"minLeadTime":4,"maxLeadTime":4,"dataPoints":1,"totalCost":77900,"componentTypes":["Condensing Boilers"]}},"Water Furnace":{"2025-05":{"avgLeadTime":10,"medianLeadTime":10,"minLeadTime":10,"maxLeadTime":10,"dataPoints":2,"totalCost":254800,"componentTypes":["Water-Source Heat Pumps","Water-Source Unitary Heat Pumps"]},"2025-04":{"avgLeadTime":15,"medianLeadTime":15,"minLeadTime":15,"maxLeadTime":15,"dataPoints":2,"totalCost":579950,"componentTypes":["Water-Source Heat Pumps","Water-Source Unitary Heat Pumps"]}},"Daikin Applied":{"2025-05":{"avgLeadTime":9,"medianLeadTime":9,"minLeadTime":9,"maxLeadTime":9,"dataPoints":2,"totalCost":207940,"componentTypes":["Water-Source Heat Pumps","Water-Source Unitary Heat Pumps"]}},"Siemens":{"2025-05":{"avgLeadTime":19.6,"medianLeadTime":30,"minLeadTime":1,"maxLeadTime":31,"dataPoints":7,"totalCost":1399777.1099999999,"componentTypes":["Low-Voltage Transformers","Low-Voltage Switchgear","Switchboards","Busway Systems","Enclosed Bus Assemblies"]}},"Evapco":{"2025-05":{"avgLeadTime":9,"medianLeadTime":9,"minLeadTime":9,"maxLeadTime":9,"dataPoints":1,"totalCost":122366,"componentTypes":["Cooling Towers"]}},"Loren Cook":{"2025-05":{"avgLeadTime":9,"medianLeadTime":9,"minLeadTime":9,"maxLeadTime":9,"dataPoints":4,"totalCost":23200,"componentTypes":["Centrifugal HVAC Fans","HVAC Fans"]},"2025-04":{"avgLeadTime":6.5,"medianLeadTime":6.5,"minLeadTime":3,"maxLeadTime":10,"dataPoints":2,"totalCost":19615,"componentTypes":["HVAC Fans"]},"2025-03":{"avgLeadTime":9.1,"medianLeadTime":10,"minLeadTime":7,"maxLeadTime":10,"dataPoints":8,"totalCost":249700,"componentTypes":["HVAC Fans","Centrifugal HVAC Fans","Kitchen Hoods"]},"2025-02":{"avgLeadTime":5.3,"medianLeadTime":6,"minLeadTime":3,"maxLeadTime":6,"dataPoints":4,"totalCost":33400,"componentTypes":["Centrifugal HVAC Fans","HVAC Fans"]},"2025-01":{"avgLeadTime":16,"medianLeadTime":16,"minLeadTime":12,"maxLeadTime":20,"dataPoints":2,"totalCost":38900,"componentTypes":["HVAC Fans"]}},"SPX Cooling Tech":{"2025-05":{"avgLeadTime":1,"medianLeadTime":1,"minLeadTime":1,"maxLeadTime":1,"dataPoints":4,"totalCost":1029820,"componentTypes":["Cooling Towers","Base-Mounted, Centrifugal Hydronic Pumps","Water Filtration Equipment"]}},"Eaton":{"2025-05":{"avgLeadTime":31,"medianLeadTime":31,"minLeadTime":31,"maxLeadTime":31,"dataPoints":2,"totalCost":1679036,"componentTypes":["Busway Systems","Enclosed Bus Assemblies"]}},"Golden Anvil":{"2025-05":{"avgLeadTime":5,"medianLeadTime":5,"minLeadTime":5,"maxLeadTime":5,"dataPoints":2,"totalCost":1138848,"componentTypes":["Busway Systems","Enclosed Bus Assemblies"]}},"Square D by Schneider Electric":{"2025-05":{"avgLeadTime":82,"medianLeadTime":82,"minLeadTime":82,"maxLeadTime":82,"dataPoints":2,"totalCost":2510650,"componentTypes":["Busway Systems","Enclosed Bus Assemblies"]}},"Armstrong Fluid Technology":{"2025-05":{"avgLeadTime":8,"medianLeadTime":8,"minLeadTime":8,"maxLeadTime":8,"dataPoints":3,"totalCost":268260,"componentTypes":["Base-Mounted, Centrifugal Hydronic Pumps","Cooling Towers","Water Filtration Equipment"]}},"ScoTech":{"2025-05":{"avgLeadTime":18,"medianLeadTime":18,"minLeadTime":18,"maxLeadTime":18,"dataPoints":2,"totalCost":255720,"componentTypes":["Medium-Voltage Pad-Mounted Transformers","Medium-Voltage Transformers"]},"2025-04":{"avgLeadTime":18,"medianLeadTime":18,"minLeadTime":18,"maxLeadTime":18,"dataPoints":2,"totalCost":255720,"componentTypes":["Medium-Voltage Pad-Mounted Transformers","Medium-Voltage Transformers"]}},"G&W Electric":{"2025-04":{"avgLeadTime":54,"medianLeadTime":54,"minLeadTime":54,"maxLeadTime":54,"dataPoints":2,"totalCost":475612,"componentTypes":["Medium-Voltage Switchgear"]}},"Markel":{"2025-04":{"avgLeadTime":3.7,"medianLeadTime":4,"minLeadTime":1,"maxLeadTime":5,"dataPoints":6,"totalCost":79555,"componentTypes":["Electric Unit Heaters","Unit Heaters","Radiant Heating Units"]}},"ABB":{"2025-04":{"avgLeadTime":24,"medianLeadTime":24,"minLeadTime":6,"maxLeadTime":42,"dataPoints":2,"totalCost":264290,"componentTypes":["Medium-Voltage Switchgear","Variable Frequency Drives"]}},"Price":{"2025-04":{"avgLeadTime":4.3,"medianLeadTime":4.5,"minLeadTime":1,"maxLeadTime":7,"dataPoints":4,"totalCost":68765,"componentTypes":["Air Duct Accessories","Duct Silencers","Diffusers, Registers, and Grilles","Air Terminal Units"]}},"Bosch - Florida Heat Pump":{"2025-04":{"avgLeadTime":16.5,"medianLeadTime":16,"minLeadTime":11,"maxLeadTime":21,"dataPoints":8,"totalCost":474096.3,"componentTypes":["Computer-Room Air-Conditioners","Large-Capacity, Computer-Room Air-Conditioners, Floor-Mounted Units","Water-Source Heat Pumps","Water-Source Unitary Heat Pumps"]},"2025-03":{"avgLeadTime":15,"medianLeadTime":15,"minLeadTime":15,"maxLeadTime":15,"dataPoints":2,"totalCost":58683.62,"componentTypes":["Water-Source Heat Pumps","Water-Source Unitary Heat Pumps"]}},"Twin City Fan":{"2025-04":{"avgLeadTime":6.2,"medianLeadTime":6,"minLeadTime":0.5,"maxLeadTime":10,"dataPoints":15,"totalCost":483950,"componentTypes":["HVAC Fans","Kitchen Hoods","Centrifugal HVAC Fans"]},"2025-03":{"avgLeadTime":5.7,"medianLeadTime":6,"minLeadTime":4,"maxLeadTime":8,"dataPoints":18,"totalCost":2447070,"componentTypes":["HVAC Fans","Centrifugal HVAC Fans","Kitchen Hoods"]},"2025-02":{"avgLeadTime":5.1,"medianLeadTime":4.5,"minLeadTime":4,"maxLeadTime":8,"dataPoints":16,"totalCost":140448,"componentTypes":["HVAC Fans","Centrifugal HVAC Fans","Kitchen Hoods"]},"2025-01":{"avgLeadTime":5.4,"medianLeadTime":4,"minLeadTime":4,"maxLeadTime":8,"dataPoints":7,"totalCost":127850,"componentTypes":["HVAC Fans"]}},"Indeeco":{"2025-04":{"avgLeadTime":5.3,"medianLeadTime":5,"minLeadTime":4,"maxLeadTime":6,"dataPoints":11,"totalCost":110226,"componentTypes":["Electric Unit Heaters","Unit Heaters","Duct Liners","Single-Duct VAV Terminal Units"]},"2025-03":{"avgLeadTime":5.2,"medianLeadTime":5,"minLeadTime":4,"maxLeadTime":6,"dataPoints":18,"totalCost":487770,"componentTypes":["Electric Boilers","Electric Unit Heaters","Unit Heaters","Finned-Tube Radiation Heaters","Radiators","Security Lighting","Electric-Resistance Air Coils","Air Coils","Radiant-Heating Electric Panels","Cabinet Unit Heaters"]},"2025-02":{"avgLeadTime":5.2,"medianLeadTime":5,"minLeadTime":4,"maxLeadTime":6,"dataPoints":6,"totalCost":29789,"componentTypes":["Cabinet Unit Heaters","Unit Heaters","Electric Unit Heaters","Radiant Heating Units"]},"2025-01":{"avgLeadTime":6,"medianLeadTime":6,"minLeadTime":6,"maxLeadTime":6,"dataPoints":1,"totalCost":11100,"componentTypes":["Unit Heaters"]}},"AAON":{"2025-04":{"avgLeadTime":16,"medianLeadTime":16,"minLeadTime":16,"maxLeadTime":16,"dataPoints":1,"totalCost":123250,"componentTypes":["Dedicated Outdoor-Air Units"]},"2025-03":{"avgLeadTime":12.3,"medianLeadTime":9,"minLeadTime":9,"maxLeadTime":19,"dataPoints":3,"totalCost":160424,"componentTypes":["Fan Coil Units","Split System Air Conditioners","Packaged Rooftop Air-Conditioning Units"]}},"Trion":{"2025-04":{"avgLeadTime":10,"medianLeadTime":10,"minLeadTime":10,"maxLeadTime":10,"dataPoints":2,"totalCost":413000,"componentTypes":["Electromagnetic-Interference Filters","Electronic Air Cleaners"]}},"Samsung":{"2025-04":{"avgLeadTime":10,"medianLeadTime":10,"minLeadTime":10,"maxLeadTime":10,"dataPoints":1,"totalCost":104150,"componentTypes":["Variable Refrigerant Flow Systems"]},"2025-03":{"avgLeadTime":12,"medianLeadTime":12,"minLeadTime":12,"maxLeadTime":12,"dataPoints":4,"totalCost":790500,"componentTypes":["Variable Refrigerant Flow Systems","VRF Indoor Units - Ducted","VRF Outdoor Units","Split System Air Conditioners"]}},"Trane-Mitsubishi":{"2025-04":{"avgLeadTime":5,"medianLeadTime":5,"minLeadTime":5,"maxLeadTime":5,"dataPoints":5,"totalCost":625000,"componentTypes":["Air-Source Unitary Heat Pumps","Fan Coil Units","Variable Refrigerant Flow Systems","VRF Indoor Units - Ducted","VRF Outdoor Units"]}},"Dri-Steem":{"2025-04":{"avgLeadTime":6,"medianLeadTime":6,"minLeadTime":6,"maxLeadTime":6,"dataPoints":1,"totalCost":7690,"componentTypes":["Humidifiers"]},"2025-02":{"avgLeadTime":8,"medianLeadTime":8,"minLeadTime":8,"maxLeadTime":8,"dataPoints":1,"totalCost":13280,"componentTypes":["Humidifiers"]}},"VTS":{"2025-04":{"avgLeadTime":13,"medianLeadTime":13,"minLeadTime":13,"maxLeadTime":13,"dataPoints":2,"totalCost":52400,"componentTypes":["Indoor Central AHUs Modular","Indoor Central-Station Air-Handling Units"]}},"PennBarry":{"2025-04":{"avgLeadTime":7.7,"medianLeadTime":7,"minLeadTime":4,"maxLeadTime":14,"dataPoints":10,"totalCost":129578,"componentTypes":["HVAC Fans","Air Terminal Units"]},"2025-01":{"avgLeadTime":6,"medianLeadTime":6,"minLeadTime":6,"maxLeadTime":6,"dataPoints":1,"totalCost":6007,"componentTypes":["HVAC Fans"]}},"Tutco":{"2025-04":{"avgLeadTime":4.6,"medianLeadTime":5,"minLeadTime":4,"maxLeadTime":5,"dataPoints":5,"totalCost":14900,"componentTypes":["Electric Unit Heaters","Unit Heaters","Air Coils","Duct Liners","Single-Duct VAV Terminal Units"]}},"Patterson":{"2025-04":{"avgLeadTime":4,"medianLeadTime":4,"minLeadTime":4,"maxLeadTime":4,"dataPoints":2,"totalCost":5360,"componentTypes":["Chemical Water Treatment","Hydronic Piping Specialties"]},"2025-03":{"avgLeadTime":7.8,"medianLeadTime":8,"minLeadTime":5,"maxLeadTime":10,"dataPoints":5,"totalCost":395350,"componentTypes":["Hydronic Pumps","Steam-To-Water Heat Exchangers","Hydronic Piping Specialties","In-Line Centrifugal Hydronic Pumps"]}},"TMI":{"2025-04":{"avgLeadTime":20,"medianLeadTime":20,"minLeadTime":14,"maxLeadTime":26,"dataPoints":2,"totalCost":503790,"componentTypes":["Factory-Fabricated Air-Handling Units","Packaged, Outdoor, Heating-Only Makeup-Air Units"]}},"Superior Rex":{"2025-04":{"avgLeadTime":11,"medianLeadTime":11,"minLeadTime":11,"maxLeadTime":11,"dataPoints":1,"totalCost":1569440,"componentTypes":["Fan Coil Units"]}},"Arrow United":{"2025-04":{"avgLeadTime":5,"medianLeadTime":5,"minLeadTime":5,"maxLeadTime":5,"dataPoints":1,"totalCost":1125,"componentTypes":["Diffusers, Registers, and Grilles"]}},"Enviro Tech International":{"2025-04":{"avgLeadTime":17,"medianLeadTime":17,"minLeadTime":17,"maxLeadTime":17,"dataPoints":3,"totalCost":53625,"componentTypes":["Fan Coil Units","Self-Contained Air Conditioners","Water-Source Heat Pumps"]}},"IEC":{"2025-04":{"avgLeadTime":8,"medianLeadTime":8,"minLeadTime":8,"maxLeadTime":8,"dataPoints":3,"totalCost":55800,"componentTypes":["Fan Coil Units","Self-Contained Air Conditioners","Water-Source Heat Pumps"]},"2025-03":{"avgLeadTime":10,"medianLeadTime":10,"minLeadTime":10,"maxLeadTime":10,"dataPoints":1,"totalCost":79600,"componentTypes":["Fan Coil Units"]},"2025-02":{"avgLeadTime":10,"medianLeadTime":10,"minLeadTime":10,"maxLeadTime":10,"dataPoints":1,"totalCost":56200,"componentTypes":["Fan Coil Units"]}},"Condair":{"2025-04":{"avgLeadTime":2,"medianLeadTime":2,"minLeadTime":2,"maxLeadTime":2,"dataPoints":1,"totalCost":40685,"componentTypes":["Humidifiers"]},"2025-03":{"avgLeadTime":4,"medianLeadTime":4,"minLeadTime":4,"maxLeadTime":4,"dataPoints":1,"totalCost":9400,"componentTypes":["Humidifiers"]}},"Valent":{"2025-04":{"avgLeadTime":9,"medianLeadTime":9,"minLeadTime":9,"maxLeadTime":9,"dataPoints":2,"totalCost":139000,"componentTypes":["Custom Packaged Rooftop AC Unit","Packaged Rooftop Air-Conditioning Units"]}},"NexGen":{"2025-04":{"avgLeadTime":12,"medianLeadTime":12,"minLeadTime":12,"maxLeadTime":12,"dataPoints":2,"totalCost":152500,"componentTypes":["Custom Packaged Rooftop AC Unit","Packaged Rooftop Air-Conditioning Units"]}},"Trane/Mitsubishi":{"2025-04":{"avgLeadTime":5,"medianLeadTime":5,"minLeadTime":5,"maxLeadTime":5,"dataPoints":1,"totalCost":84544,"componentTypes":["Split System Air Conditioners"]},"2025-03":{"avgLeadTime":5.3,"medianLeadTime":5,"minLeadTime":5,"maxLeadTime":6,"dataPoints":10,"totalCost":272252,"componentTypes":["Split System Air Conditioners","Variable Refrigerant Flow Systems","VRF Indoor Units - Ducted","VRF Outdoor Units","Fan Coil Units"]},"2025-01":{"avgLeadTime":23,"medianLeadTime":23,"minLeadTime":23,"maxLeadTime":23,"dataPoints":5,"totalCost":2525000,"componentTypes":["Factory-Fabricated Air-Handling Units","Split System Air Conditioners","Variable Refrigerant Flow Systems","VRF Indoor Units - Ducted","VRF Indoor Units - Ductless"]}},"Robatherm":{"2025-03":{"avgLeadTime":5,"medianLeadTime":5,"minLeadTime":5,"maxLeadTime":5,"dataPoints":2,"totalCost":130000,"componentTypes":["Indoor Central AHUs Modular","Indoor Central-Station Air-Handling Units"]},"2025-01":{"avgLeadTime":5,"medianLeadTime":5,"minLeadTime":5,"maxLeadTime":5,"dataPoints":1,"totalCost":637500,"componentTypes":["Dedicated Outdoor-Air Units"]}},"Climate Master":{"2025-03":{"avgLeadTime":9,"medianLeadTime":9,"minLeadTime":9,"maxLeadTime":9,"dataPoints":5,"totalCost":107600,"componentTypes":["Electric Boilers","Electric Unit Heaters","Self-Contained Air Conditioners","Water-Source Heat Pumps","Water-Source Unitary Heat Pumps"]},"2025-02":{"avgLeadTime":11,"medianLeadTime":11,"minLeadTime":10,"maxLeadTime":12,"dataPoints":4,"totalCost":92450,"componentTypes":["Water-Source Unitary Heat Pumps","Water-Source Heat Pumps"]}},"Infinity by Critical Systems":{"2025-03":{"avgLeadTime":6,"medianLeadTime":6,"minLeadTime":6,"maxLeadTime":6,"dataPoints":2,"totalCost":103800,"componentTypes":["Custom Packaged Rooftop AC Unit","Packaged Rooftop Air-Conditioning Units"]}},"Titus/Price":{"2025-03":{"avgLeadTime":6.3,"medianLeadTime":6,"minLeadTime":5,"maxLeadTime":8,"dataPoints":7,"totalCost":211800,"componentTypes":["Diffusers, Registers, and Grilles","Air Outlets and Inlets","Air Terminal Units","Variable-Air-Volume Terminal Units"]},"2025-02":{"avgLeadTime":6.3,"medianLeadTime":6,"minLeadTime":6,"maxLeadTime":8,"dataPoints":7,"totalCost":243320,"componentTypes":["Air Outlets and Inlets","Diffusers, Registers, and Grilles","Air Terminal Units","Variable-Air-Volume Terminal Units","Ductwork Specialties"]},"2025-01":{"avgLeadTime":6.1,"medianLeadTime":7,"minLeadTime":3,"maxLeadTime":8,"dataPoints":7,"totalCost":250530,"componentTypes":["Diffusers, Registers, and Grilles","Ductwork Specialties","Air Terminal Units"]}},"Price/ Titus":{"2025-03":{"avgLeadTime":8,"medianLeadTime":8,"minLeadTime":8,"maxLeadTime":8,"dataPoints":1,"totalCost":0,"componentTypes":["Fan-Powered VAV Terminal Units"]}},"Daikin/McQuay":{"2025-03":{"avgLeadTime":1,"medianLeadTime":1,"minLeadTime":1,"maxLeadTime":1,"dataPoints":1,"totalCost":99292,"componentTypes":["Packaged Rooftop Air-Conditioning Units"]}},"Taco":{"2025-03":{"avgLeadTime":5,"medianLeadTime":5,"minLeadTime":5,"maxLeadTime":5,"dataPoints":1,"totalCost":14160,"componentTypes":["Hydronic Pumps"]}},"Neptronic":{"2025-03":{"avgLeadTime":8,"medianLeadTime":8,"minLeadTime":8,"maxLeadTime":8,"dataPoints":2,"totalCost":9000,"componentTypes":["Electric-Resistance Air Coils","Unit Heaters"]}},"Dunham Bush USA":{"2025-03":{"avgLeadTime":21,"medianLeadTime":21,"minLeadTime":21,"maxLeadTime":21,"dataPoints":2,"totalCost":518950,"componentTypes":["Air-Cooled Scroll Water Chillers","Scroll Water Chillers"]}},"Kampmann":{"2025-03":{"avgLeadTime":7,"medianLeadTime":8,"minLeadTime":5,"maxLeadTime":8,"dataPoints":3,"totalCost":17200,"componentTypes":["Fan Coil Units","Hot Water Unit Heaters","Radiant Heating Units"]}},"CompuAire":{"2025-03":{"avgLeadTime":1,"medianLeadTime":1,"minLeadTime":1,"maxLeadTime":1,"dataPoints":1,"totalCost":50941,"componentTypes":["Computer-Room Air-Conditioners"]}},"Bell & Gossett":{"2025-03":{"avgLeadTime":1,"medianLeadTime":1,"minLeadTime":1,"maxLeadTime":1,"dataPoints":1,"totalCost":64124,"componentTypes":["Hydronic Pumps"]}},"Galletti Manufacturing":{"2025-03":{"avgLeadTime":19,"medianLeadTime":19,"minLeadTime":19,"maxLeadTime":19,"dataPoints":1,"totalCost":1048392,"componentTypes":["Air-Cooled Scroll Water Chillers"]}},"Rehlko":{"2025-03":{"avgLeadTime":42.5,"medianLeadTime":42.5,"minLeadTime":40,"maxLeadTime":45,"dataPoints":2,"totalCost":1484878,"componentTypes":["Packaged Generator Assemblies","Diesel-Engine-Driven Generator Sets"]},"2025-01":{"avgLeadTime":30,"medianLeadTime":30,"minLeadTime":30,"maxLeadTime":30,"dataPoints":1,"totalCost":604600,"componentTypes":["Packaged Generator Assemblies"]}},"Jaga":{"2025-03":{"avgLeadTime":12,"medianLeadTime":12,"minLeadTime":12,"maxLeadTime":12,"dataPoints":1,"totalCost":26210,"componentTypes":["Fan Coil Units"]}},"ASCO":{"2025-03":{"avgLeadTime":23.4,"medianLeadTime":21,"minLeadTime":2,"maxLeadTime":40,"dataPoints":5,"totalCost":1260775,"componentTypes":["Automatic Transfer Switches"]}},"Pottorff":{"2025-03":{"avgLeadTime":4,"medianLeadTime":4,"minLeadTime":4,"maxLeadTime":4,"dataPoints":1,"totalCost":800,"componentTypes":["Diffusers, Registers, and Grilles"]}},"Metalaire":{"2025-03":{"avgLeadTime":5,"medianLeadTime":5,"minLeadTime":5,"maxLeadTime":5,"dataPoints":1,"totalCost":206500,"componentTypes":["Fan-Powered VAV Terminal Units"]},"2025-02":{"avgLeadTime":4.3,"medianLeadTime":5,"minLeadTime":3,"maxLeadTime":5,"dataPoints":3,"totalCost":231000,"componentTypes":["Air Terminal Units","Air Outlets and Inlets","Diffusers, Registers, and Grilles"]}},"Marley":{"2025-03":{"avgLeadTime":15,"medianLeadTime":15,"minLeadTime":15,"maxLeadTime":15,"dataPoints":1,"totalCost":528675,"componentTypes":["Cooling Towers"]}},"Caterpillar":{"2025-03":{"avgLeadTime":11.7,"medianLeadTime":1,"minLeadTime":1,"maxLeadTime":33,"dataPoints":3,"totalCost":5016654,"componentTypes":["Electrical Load Bank","Engine Generators","Diesel-Engine-Driven Generator Sets"]},"2025-01":{"avgLeadTime":27,"medianLeadTime":27,"minLeadTime":27,"maxLeadTime":27,"dataPoints":1,"totalCost":565426,"componentTypes":["Packaged Generator Assemblies"]}},"Kohler":{"2025-03":{"avgLeadTime":57.7,"medianLeadTime":70,"minLeadTime":33,"maxLeadTime":70,"dataPoints":3,"totalCost":5839240,"componentTypes":["Electrical Load Bank","Engine Generators","Diesel-Engine-Driven Generator Sets"]},"2025-01":{"avgLeadTime":61,"medianLeadTime":61,"minLeadTime":61,"maxLeadTime":61,"dataPoints":1,"totalCost":598675,"componentTypes":["Packaged Generator Assemblies"]}},"York":{"2025-03":{"avgLeadTime":12,"medianLeadTime":12,"minLeadTime":12,"maxLeadTime":12,"dataPoints":1,"totalCost":0,"componentTypes":["Air-Cooled Scroll Water Chillers"]},"2025-02":{"avgLeadTime":10,"medianLeadTime":10,"minLeadTime":10,"maxLeadTime":10,"dataPoints":1,"totalCost":6984600,"componentTypes":["Air-Cooled Scroll Water Chillers"]},"2025-01":{"avgLeadTime":15,"medianLeadTime":19,"minLeadTime":2,"maxLeadTime":20,"dataPoints":4,"totalCost":3730500,"componentTypes":["Air-Cooled Centrifugal Water Chillers","Air-Cooled Scroll Water Chillers","Water-Cooled Centrifugal Water Chillers"]}},"Bosch":{"2025-03":{"avgLeadTime":14,"medianLeadTime":14,"minLeadTime":14,"maxLeadTime":14,"dataPoints":1,"totalCost":17528.88,"componentTypes":["Water-Source Heat Pumps"]}},"Powered Aire":{"2025-02":{"avgLeadTime":5,"medianLeadTime":5,"minLeadTime":5,"maxLeadTime":5,"dataPoints":1,"totalCost":4570,"componentTypes":["Air Curtains"]}},"Mammoth":{"2025-02":{"avgLeadTime":23.2,"medianLeadTime":24,"minLeadTime":19,"maxLeadTime":24,"dataPoints":6,"totalCost":224055,"componentTypes":["Central HVAC Equipment","Packaged, Outdoor, Heating-Only Makeup-Air Units","Custom Heating and Ventilating Makeup-Air Units","Decentralized Unitary HVAC Equipment","Indoor Central-Station Air-Handling Units"]}},"Krueger/ Pottorff":{"2025-02":{"avgLeadTime":4,"medianLeadTime":4,"minLeadTime":4,"maxLeadTime":4,"dataPoints":2,"totalCost":40220,"componentTypes":["Air Outlets and Inlets","Air Terminal Units"]},"2025-01":{"avgLeadTime":4,"medianLeadTime":4,"minLeadTime":4,"maxLeadTime":4,"dataPoints":2,"totalCost":60560,"componentTypes":["Diffusers, Registers, and Grilles","Ductwork Specialties"]}},"Hitachi":{"2025-02":{"avgLeadTime":12,"medianLeadTime":12,"minLeadTime":12,"maxLeadTime":12,"dataPoints":1,"totalCost":22800,"componentTypes":["Variable Refrigerant Flow Systems"]}},"Florida Heat Pump":{"2025-02":{"avgLeadTime":11.5,"medianLeadTime":11.5,"minLeadTime":11,"maxLeadTime":12,"dataPoints":2,"totalCost":71683.3,"componentTypes":["Water-Source Heat Pumps","Water-Source Unitary Heat Pumps"]},"2025-01":{"avgLeadTime":11.9,"medianLeadTime":12,"minLeadTime":11,"maxLeadTime":13,"dataPoints":7,"totalCost":241680.71,"componentTypes":["Water-Source Unitary Heat Pumps","Water-Source Heat Pumps","Self-Contained Air Conditioners"]}},"Plate Concepts":{"2025-02":{"avgLeadTime":12,"medianLeadTime":12,"minLeadTime":12,"maxLeadTime":12,"dataPoints":1,"totalCost":10120,"componentTypes":["Plate-Type, Liquid-to-Liquid Heat Exchangers"]}},"LG Electronics":{"2025-02":{"avgLeadTime":5,"medianLeadTime":5,"minLeadTime":5,"maxLeadTime":5,"dataPoints":2,"totalCost":132000,"componentTypes":["Split System Air Conditioners","Variable Refrigerant Flow Systems"]}},"CaptiveAire":{"2025-02":{"avgLeadTime":3,"medianLeadTime":3,"minLeadTime":3,"maxLeadTime":3,"dataPoints":1,"totalCost":126635.88,"componentTypes":["Indoor Central-Station Air-Handling Units"]}},"MagicAire":{"2025-02":{"avgLeadTime":12,"medianLeadTime":12,"minLeadTime":12,"maxLeadTime":12,"dataPoints":1,"totalCost":85000,"componentTypes":["Self-Contained Air Conditioners"]}},"Quantech":{"2025-02":{"avgLeadTime":20,"medianLeadTime":20,"minLeadTime":20,"maxLeadTime":20,"dataPoints":2,"totalCost":1786400,"componentTypes":["Air-Cooled Centrifugal Water Chillers","Air-Cooled Scroll Water Chillers"]}},"Cambridgeport Customs":{"2025-02":{"avgLeadTime":26.2,"medianLeadTime":26.2,"minLeadTime":26.2,"maxLeadTime":26.2,"dataPoints":1,"totalCost":240000,"componentTypes":["Indoor Central-Station Air-Handling Units"]},"2025-01":{"avgLeadTime":26,"medianLeadTime":26,"minLeadTime":26,"maxLeadTime":26,"dataPoints":1,"totalCost":900000,"componentTypes":["Dedicated Outdoor-Air Units"]}},"VRF: Lennox Powered by Samsung, DOAS/AHU: Klimor":{"2025-02":{"avgLeadTime":20,"medianLeadTime":20,"minLeadTime":20,"maxLeadTime":20,"dataPoints":5,"totalCost":1650000,"componentTypes":["Factory-Fabricated Air-Handling Units","Split System Air Conditioners","Variable Refrigerant Flow Systems","VRF Indoor Units - Ducted","VRF Indoor Units - Ductless"]}},"Haakon":{"2025-02":{"avgLeadTime":24,"medianLeadTime":24,"minLeadTime":24,"maxLeadTime":24,"dataPoints":1,"totalCost":155000,"componentTypes":["Indoor Central-Station Air-Handling Units"]}},"Chillmaster":{"2025-02":{"avgLeadTime":33,"medianLeadTime":33,"minLeadTime":33,"maxLeadTime":33,"dataPoints":2,"totalCost":3600000,"componentTypes":["Air-Cooled Centrifugal Water Chillers","Air-Cooled Scroll Water Chillers"]}},"Twin City Fan/ ABB VFD":{"2025-01":{"avgLeadTime":8,"medianLeadTime":8,"minLeadTime":8,"maxLeadTime":8,"dataPoints":1,"totalCost":2500,"componentTypes":["HVAC Fans"]}},"itus/ Price":{"2025-01":{"avgLeadTime":0,"medianLeadTime":0,"minLeadTime":0,"maxLeadTime":0,"dataPoints":1,"totalCost":0,"componentTypes":["Air Terminal Units"]}},"Samsung and Aaon":{"2025-01":{"avgLeadTime":20,"medianLeadTime":20,"minLeadTime":20,"maxLeadTime":20,"dataPoints":5,"totalCost":1919500,"componentTypes":["Factory-Fabricated Air-Handling Units","Split System Air Conditioners","Variable Refrigerant Flow Systems","VRF Indoor Units - Ducted","VRF Indoor Units - Ductless"]}},"Haakon (basis of design)":{"2025-01":{"avgLeadTime":1,"medianLeadTime":1,"minLeadTime":1,"maxLeadTime":1,"dataPoints":1,"totalCost":830000,"componentTypes":["Dedicated Outdoor-Air Units"]}},"TMI Climate Solutions":{"2025-01":{"avgLeadTime":15,"medianLeadTime":15,"minLeadTime":15,"maxLeadTime":15,"dataPoints":1,"totalCost":798750,"componentTypes":["Dedicated Outdoor-Air Units"]}},"LG":{"2025-01":{"avgLeadTime":8,"medianLeadTime":8,"minLeadTime":8,"maxLeadTime":8,"dataPoints":3,"totalCost":267000,"componentTypes":["Fan Coil Units","Split System Air Conditioners","Variable Refrigerant Flow Systems"]}},"Thermolec":{"2025-01":{"avgLeadTime":4,"medianLeadTime":4,"minLeadTime":4,"maxLeadTime":4,"dataPoints":1,"totalCost":8000,"componentTypes":["Unit Heaters"]}}};
+
+        function getComponentTimeSeriesData(componentType) {
+            const monthlyData = componentData[componentType] || {};
+            
+            return months.map(month => {
+                const stats = monthlyData[month];
+                return stats ? stats.avgLeadTime : null;
+            });
+        }
+
+        function getManufacturerTimeSeriesData(manufacturer) {
+            const monthlyData = manufacturerData[manufacturer] || {};
+            
+            return months.map(month => {
+                const stats = monthlyData[month];
+                return stats ? stats.avgLeadTime : null;
+            });
+        }
+
+        function showComponentTrends() {
+            const traces = topComponents.slice(0, 8).map(component => ({
+                x: months,
+                y: getComponentTimeSeriesData(component),
+                type: 'scatter',
+                mode: 'lines+markers',
+                name: component.length > 30 ? component.substring(0, 30) + '...' : component,
+                connectgaps: false
+            }));
+
+            const layout = {
+                title: 'Component Type Lead Time Trends Over Time',
+                xaxis: { title: 'Month' },
+                yaxis: { title: 'Average Lead Time (weeks)' },
+                hovermode: 'x unified'
+            };
+
+            Plotly.newPlot('mainChart', traces, layout);
+            updateInsights('component');
+        }
+
+        function showManufacturerTrends() {
+            const traces = topManufacturers.slice(0, 8).map(manufacturer => ({
+                x: months,
+                y: getManufacturerTimeSeriesData(manufacturer),
+                type: 'scatter',
+                mode: 'lines+markers',
+                name: manufacturer,
+                connectgaps: false
+            }));
+
+            const layout = {
+                title: 'Manufacturer Lead Time Trends Over Time',
+                xaxis: { title: 'Month' },
+                yaxis: { title: 'Average Lead Time (weeks)' },
+                hovermode: 'x unified'
+            };
+
+            Plotly.newPlot('mainChart', traces, layout);
+            updateInsights('manufacturer');
+        }
+
+        function showHeatmap() {
+            const heatmapData = [];
+            const componentLabels = [];
+            
+            topComponents.slice(0, 15).forEach(component => {
+                const monthlyData = componentData[component] || {};
+                const row = months.map(month => {
+                    const stats = monthlyData[month];
+                    return stats ? stats.avgLeadTime : null;
+                });
+                heatmapData.push(row);
+                componentLabels.push(component.length > 25 ? component.substring(0, 25) + '...' : component);
+            });
+
+            const trace = {
+                z: heatmapData,
+                x: months,
+                y: componentLabels,
+                type: 'heatmap',
+                colorscale: 'RdYlBu_r',
+                showscale: true,
+                colorbar: { title: 'Lead Time (weeks)' }
+            };
+
+            const layout = {
+                title: 'Lead Time Heatmap: Component Types vs Months',
+                xaxis: { title: 'Month' },
+                yaxis: { title: 'Component Type' }
+            };
+
+            Plotly.newPlot('mainChart', [trace], layout);
+            updateInsights('heatmap');
+        }
+
+        function showOverallTrend() {
+            // Calculate overall monthly averages
+            const overallData = months.map(month => {
+                let totalLeadTime = 0;
+                let totalDataPoints = 0;
+                
+                for (const component of Object.keys(componentData)) {
+                    const monthlyData = componentData[component];
+                    const stats = monthlyData[month];
+                    if (stats) {
+                        totalLeadTime += stats.avgLeadTime * stats.dataPoints;
+                        totalDataPoints += stats.dataPoints;
+                    }
+                }
+                
+                return totalDataPoints > 0 ? totalLeadTime / totalDataPoints : null;
+            });
+
+            const trace = {
+                x: months,
+                y: overallData,
+                type: 'scatter',
+                mode: 'lines+markers',
+                name: 'Overall Average',
+                line: { width: 3, color: '#1976d2' },
+                marker: { size: 8 }
+            };
+
+            const layout = {
+                title: 'Overall Lead Time Trend (All Components Combined)',
+                xaxis: { title: 'Month' },
+                yaxis: { title: 'Average Lead Time (weeks)' }
+            };
+
+            Plotly.newPlot('mainChart', [trace], layout);
+            updateInsights('overall');
+        }
+
+        function showSingleComponent() {
+            const componentSelector = document.getElementById('componentSelector');
+            const selectedComponent = componentSelector.value;
+            
+            if (!selectedComponent) {
+                alert('Please select a component type from the dropdown first.');
+                return;
+            }
+            
+            updateSingleComponentView();
+        }
+
+        function updateSingleComponentView() {
+            const componentSelector = document.getElementById('componentSelector');
+            const selectedComponent = componentSelector.value;
+            
+            if (!selectedComponent) return;
+            
+            const componentStats = componentData[selectedComponent] || {};
+            const dataPoints = months.map(month => {
+                const stats = componentStats[month];
+                return stats ? stats.dataPoints : 0;
+            });
+            
+            const leadTimeTrace = {
+                x: months,
+                y: getComponentTimeSeriesData(selectedComponent),
+                type: 'scatter',
+                mode: 'lines+markers',
+                name: 'Average Lead Time',
+                line: { width: 3, color: '#1976d2' },
+                marker: { size: 8 },
+                yaxis: 'y'
+            };
+            
+            const dataPointsTrace = {
+                x: months,
+                y: dataPoints,
+                type: 'bar',
+                name: 'Data Points',
+                marker: { color: 'rgba(255, 99, 132, 0.6)' },
+                yaxis: 'y2'
+            };
+
+            const layout = {
+                title: `Lead Time Trend: ${selectedComponent}`,
+                xaxis: { title: 'Month' },
+                yaxis: { 
+                    title: 'Average Lead Time (weeks)',
+                    side: 'left'
+                },
+                yaxis2: {
+                    title: 'Number of Data Points',
+                    overlaying: 'y',
+                    side: 'right'
+                },
+                hovermode: 'x unified'
+            };
+
+            Plotly.newPlot('mainChart', [leadTimeTrace, dataPointsTrace], layout);
+            
+            // Show manufacturers for this component in secondary chart
+            showManufacturersForComponent(selectedComponent);
+            updateInsights('singleComponent', selectedComponent);
+        }
+
+        function updateSingleManufacturerView() {
+            const manufacturerSelector = document.getElementById('manufacturerSelector');
+            const selectedManufacturer = manufacturerSelector.value;
+            
+            if (!selectedManufacturer) return;
+            
+            const manufacturerStats = manufacturerData[selectedManufacturer] || {};
+            const dataPoints = months.map(month => {
+                const stats = manufacturerStats[month];
+                return stats ? stats.dataPoints : 0;
+            });
+            
+            const leadTimeTrace = {
+                x: months,
+                y: getManufacturerTimeSeriesData(selectedManufacturer),
+                type: 'scatter',
+                mode: 'lines+markers',
+                name: 'Average Lead Time',
+                line: { width: 3, color: '#ff6b35' },
+                marker: { size: 8 },
+                yaxis: 'y'
+            };
+            
+            const dataPointsTrace = {
+                x: months,
+                y: dataPoints,
+                type: 'bar',
+                name: 'Data Points',
+                marker: { color: 'rgba(54, 162, 235, 0.6)' },
+                yaxis: 'y2'
+            };
+
+            const layout = {
+                title: `Lead Time Trend: ${selectedManufacturer}`,
+                xaxis: { title: 'Month' },
+                yaxis: { 
+                    title: 'Average Lead Time (weeks)',
+                    side: 'left'
+                },
+                yaxis2: {
+                    title: 'Number of Data Points',
+                    overlaying: 'y',
+                    side: 'right'
+                },
+                hovermode: 'x unified'
+            };
+
+            Plotly.newPlot('mainChart', [leadTimeTrace, dataPointsTrace], layout);
+            updateInsights('singleManufacturer', selectedManufacturer);
+        }
+
+        function showManufacturersForComponent(componentType) {
+            // Find manufacturers that supply this component
+            const relevantManufacturers = [];
+            
+            for (const manufacturer of Object.keys(manufacturerData)) {
+                const manufacturerStats = manufacturerData[manufacturer];
+                // Check if this manufacturer has data for the selected component
+                for (const month of months) {
+                    const stats = manufacturerStats[month];
+                    if (stats && stats.componentTypes && stats.componentTypes.includes(componentType)) {
+                        relevantManufacturers.push(manufacturer);
+                        break;
+                    }
+                }
+            }
+            
+            if (relevantManufacturers.length > 0) {
+                const traces = relevantManufacturers.slice(0, 6).map(manufacturer => ({
+                    x: months,
+                    y: getManufacturerTimeSeriesData(manufacturer),
+                    type: 'scatter',
+                    mode: 'lines+markers',
+                    name: manufacturer,
+                    connectgaps: false
+                }));
+
+                const layout = {
+                    title: `Manufacturers Supplying: ${componentType}`,
+                    xaxis: { title: 'Month' },
+                    yaxis: { title: 'Average Lead Time (weeks)' },
+                    hovermode: 'x unified'
+                };
+
+                Plotly.newPlot('secondaryChart', traces, layout);
+            } else {
+                document.getElementById('secondaryChart').innerHTML = '<p style="text-align: center; padding: 50px;">No manufacturer data available for this component type.</p>';
+            }
+        }
+
+        function populateDropdowns() {
+            // Populate component selector
+            const componentSelector = document.getElementById('componentSelector');
+            const allComponents = Object.keys(componentData).sort();
+            
+            allComponents.forEach(component => {
+                const option = document.createElement('option');
+                option.value = component;
+                option.textContent = component.length > 50 ? component.substring(0, 50) + '...' : component;
+                componentSelector.appendChild(option);
+            });
+            
+            // Populate manufacturer selector
+            const manufacturerSelector = document.getElementById('manufacturerSelector');
+            const allManufacturers = Object.keys(manufacturerData).sort();
+            
+            allManufacturers.forEach(manufacturer => {
+                const option = document.createElement('option');
+                option.value = manufacturer;
+                option.textContent = manufacturer;
+                manufacturerSelector.appendChild(option);
+            });
+        }
+
+        function updateInsights(viewType, selectedItem = null) {
+            let insights = '';
+            
+            switch(viewType) {
+                case 'component':
+                    insights = `
+                        <p><strong>Component Analysis:</strong></p>
+                        <ul>
+                            <li>Tracking ${topComponents.length} component types with sufficient data</li>
+                            <li>Most tracked component: ${topComponents[0]}</li>
+                            <li>Data spans ${months.length} months from ${months[0]} to ${months[months.length-1]}</li>
+                        </ul>
+                    `;
+                    break;
+                case 'manufacturer':
+                    insights = `
+                        <p><strong>Manufacturer Analysis:</strong></p>
+                        <ul>
+                            <li>Tracking ${topManufacturers.length} manufacturers with sufficient data</li>
+                            <li>Most tracked manufacturer: ${topManufacturers[0]}</li>
+                            <li>Use this view to identify manufacturer performance trends</li>
+                        </ul>
+                    `;
+                    break;
+                case 'singleComponent':
+                    const componentStats = componentData[selectedItem] || {};
+                    const totalDataPoints = Object.values(componentStats).reduce((sum, stats) => sum + (stats.dataPoints || 0), 0);
+                    const avgLeadTime = Object.values(componentStats).reduce((sum, stats, index, arr) => {
+                        return sum + (stats.avgLeadTime || 0) / arr.length;
+                    }, 0);
+                    
+                    insights = `
+                        <p><strong>Single Component Analysis: ${selectedItem}</strong></p>
+                        <ul>
+                            <li>Total data points across all months: ${totalDataPoints}</li>
+                            <li>Overall average lead time: ${avgLeadTime.toFixed(1)} weeks</li>
+                            <li>Data available for ${Object.keys(componentStats).length} months</li>
+                            <li>Chart shows both lead time trend and data reliability (bar chart)</li>
+                        </ul>
+                    `;
+                    break;
+                case 'singleManufacturer':
+                    const manufacturerStats = manufacturerData[selectedItem] || {};
+                    const totalMfgDataPoints = Object.values(manufacturerStats).reduce((sum, stats) => sum + (stats.dataPoints || 0), 0);
+                    const avgMfgLeadTime = Object.values(manufacturerStats).reduce((sum, stats, index, arr) => {
+                        return sum + (stats.avgLeadTime || 0) / arr.length;
+                    }, 0);
+                    
+                    insights = `
+                        <p><strong>Single Manufacturer Analysis: ${selectedItem}</strong></p>
+                        <ul>
+                            <li>Total data points across all months: ${totalMfgDataPoints}</li>
+                            <li>Overall average lead time: ${avgMfgLeadTime.toFixed(1)} weeks</li>
+                            <li>Data available for ${Object.keys(manufacturerStats).length} months</li>
+                            <li>Chart shows both lead time trend and data reliability (bar chart)</li>
+                        </ul>
+                    `;
+                    break;
+                case 'heatmap':
+                    insights = `
+                        <p><strong>Heatmap Analysis:</strong></p>
+                        <ul>
+                            <li>Red areas indicate higher lead times, blue areas indicate lower lead times</li>
+                            <li>White/missing areas indicate no data for that component in that month</li>
+                            <li>Use this to quickly spot seasonal patterns or trends</li>
+                        </ul>
+                    `;
+                    break;
+                case 'overall':
+                    insights = `
+                        <p><strong>Overall Trend Analysis:</strong></p>
+                        <ul>
+                            <li>Shows weighted average lead time across all components and manufacturers</li>
+                            <li>Useful for identifying industry-wide trends</li>
+                            <li>Combines all data points for each month</li>
+                        </ul>
+                    `;
+                    break;
+            }
+            
+            document.getElementById('insights').innerHTML = insights;
+        }
+
+        // Initialize dropdowns and show component trends
+        populateDropdowns();
+        showComponentTrends();
+    </script>
+</body>
+</html>

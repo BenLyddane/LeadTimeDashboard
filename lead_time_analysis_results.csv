@@ -1,0 +1,94 @@
+﻿Component Type,Average Lead Time (weeks),Median Lead Time (weeks),Min Lead Time (weeks),Max Lead Time (weeks),Data Points,Std Dev
+HVAC Fans,6.3,6,0.5,20,85,2.7
+Air Terminal Units,4.6,4,0,8,44,1.7
+Computer-Room Air-Conditioners,11.9,10.5,1,22,40,6
+"Diffusers, Registers, and Grilles",4.6,4,1,8,39,1.4
+Split System Air Conditioners,8.7,7,1,23,27,5.5
+Variable-Air-Volume Terminal Units,4.7,4,1,7,27,1.3
+Water-Source Heat Pumps,11.7,11.5,1,21,24,4.2
+Water-Source Unitary Heat Pumps,11.4,10.5,8,21,24,3.3
+Packaged Rooftop Air-Conditioning Units,15.4,12,1,50,21,10.1
+Air Outlets and Inlets,4.5,4,1,8,21,1.6
+Unit Heaters,5.2,5,4,8,20,1.1
+Fan Coil Units,8.9,8,1,17,19,4.4
+Variable Refrigerant Flow Systems,9.4,7,4,23,17,5.9
+Electric Unit Heaters,5.5,5,4,9,17,1.2
+Ductwork Specialties ,5,4,3,8,17,1.3
+Centrifugal HVAC Fans,7.4,7.5,4,10,14,1.9
+Dedicated Outdoor-Air Units,15.4,16,1,26,9,7.7
+Fan-Powered VAV Terminal Units,4.4,4,1,8,9,1.8
+Air-Cooled Scroll Water Chillers,15.3,19,1,33,9,9.6
+Hydronic Pumps,6.9,8,1,11,8,3.3
+Indoor Central-Station Air-Handling Units,16.2,19,3,26.2,8,7.9
+VRF Indoor Units - Ducted,12.9,12,5,23,7,7.5
+Single-Duct VAV Terminal Units,4.8,4.5,4,6,6,0.9
+Cooling Towers,6.8,8,1,15,5,5.3
+Humidifiers,6,6,2,10,5,2.8
+Self-Contained Air Conditioners,11.8,12,8,17,5,3.2
+Automatic Transfer Switches,23.4,21,2,40,5,13.9
+In-Line Centrifugal Hydronic Pumps,8,9,3,11,4,3.1
+"Packaged, Outdoor, Heating-Only Makeup-Air Units",16.5,17,8,24,4,6.1
+Busway Systems,37.3,31,5,82,4,27.9
+Enclosed Bus Assemblies,37.3,31,5,82,4,27.9
+Indoor Central AHUs Modular,9.5,9.5,5,14,4,4
+Factory-Fabricated Air-Handling Units,22.3,21.5,20,26,4,2.5
+Kitchen Hoods,7.3,7,5,10,4,1.9
+Custom Packaged Rooftop AC Unit,11.8,10.5,6,20,4,5.2
+Packaged Generator Assemblies,40.8,37.5,27,61,4,13.5
+"Plate-Type, Liquid-to-Liquid Heat Exchangers",11,11,10,12,3,0.8
+"Base-Mounted, Centrifugal Hydronic Pumps",6.7,8,1,11,3,4.2
+Wall Registers and Grilles,3.3,4,2,4,3,0.9
+Low-Voltage Transformers,5,7,1,7,3,2.8
+Medium-Voltage Switchgear,50,54,42,54,3,5.7
+VRF Outdoor Units,7.3,5,5,12,3,3.3
+Radiant Heating Units,4.7,5,1,8,3,2.9
+Cabinet Unit Heaters,6.3,6,6,7,3,0.5
+Diesel-Engine-Driven Generator Sets,35.3,33,33,40,3,3.3
+Air-Cooled Centrifugal Water Chillers,24.3,20,20,33,3,6.1
+VRF Indoor Units - Ductless,21,20,20,23,3,1.4
+"Air-Cooled, Rotary-Screw Water Chillers",29.5,29.5,22,37,2,7.5
+Packaged Outdoor HVAC Equipment,17.5,17.5,16,19,2,1.5
+Water Filtration Equipment,4.5,4.5,1,8,2,3.5
+Medium-Voltage Pad-Mounted Transformers,18,18,18,18,2,0
+Medium-Voltage Transformers,18,18,18,18,2,0
+"Large-Capacity, Computer-Room Air-Conditioners, Floor-Mounted Units",8,8,1,15,2,7
+Air-Source Unitary Heat Pumps,6,6,5,7,2,1
+Hydronic Piping Specialties ,4.5,4.5,4,5,2,0.5
+Air Coils,5.5,5.5,5,6,2,0.5
+Duct Liners,4.5,4.5,4,5,2,0.5
+"Computer-Room Air-Conditioners, Ceiling Mounted Units",12.5,12.5,8,17,2,4.5
+Electric Boilers,7.5,7.5,6,9,2,1.5
+Scroll Water Chillers,11,11,1,21,2,10
+Electric-Resistance Air Coils,6,6,4,8,2,2
+Steam-To-Water Heat Exchangers,9,9,8,10,2,1
+Electrical Load Bank,35.5,35.5,1,70,2,34.5
+Engine Generators,35.5,35.5,1,70,2,34.5
+Central HVAC Equipment,24,24,24,24,2,0
+"Shell-Type, Liquid-to-Liquid Heat Exchangers",11,11,11,11,1,0
+Small-Capacity Self-Contained Air-Conditioners,20,20,20,20,1,0
+Distribution Panelboards,20,20,20,20,1,0
+Condensing Boilers,4,4,4,4,1,0
+Air-Side Heat Recovery,17,17,17,17,1,0
+"Air-Cooled, Modular Water Chillers",19,19,19,19,1,0
+Low-Voltage Switchgear,30,30,30,30,1,0
+Switchboards,30,30,30,30,1,0
+Air Duct Accessories,7,7,7,7,1,0
+Duct Silencers,7,7,7,7,1,0
+Electromagnetic-Interference Filters,10,10,10,10,1,0
+Electronic Air Cleaners,10,10,10,10,1,0
+Variable Frequency Drives,6,6,6,6,1,0
+Chemical Water Treatment,4,4,4,4,1,0
+ Finned-Tube Radiation Heaters,6,6,6,6,1,0
+Radiators,5,5,5,5,1,0
+Security Lighting,5,5,5,5,1,0
+Air-to-Air Energy Recovery Equipment,21,21,21,21,1,0
+Energy Recovery Units,21,21,21,21,1,0
+Radiant-Heating Electric Panels,4,4,4,4,1,0
+Packaged Terminal Air Conditioners,4,4,4,4,1,0
+Ceiling Diffusers,4,4,4,4,1,0
+Hot Water Unit Heaters,8,8,8,8,1,0
+Air Curtains,5,5,5,5,1,0
+Custom Heating and Ventilating Makeup-Air Units,24,24,24,24,1,0
+"Vertical-Mounted, Double-Suction Centrifugal Hydronic Pumps",3,3,3,3,1,0
+Decentralized Unitary HVAC Equipment,24,24,24,24,1,0
+Water-Cooled Centrifugal Water Chillers,18,18,18,18,1,0

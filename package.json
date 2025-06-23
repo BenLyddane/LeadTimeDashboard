@@ -1,0 +1,20 @@
+{
+  "name": "lead-time-analyzer",
+  "version": "1.0.0",
+  "description": "Lead time analysis for component types",
+  "main": "lead_time_analysis.js",
+  "scripts": {
+    "start": "node lead_time_analysis.js",
+    "analyze": "node lead_time_analysis.js",
+    "historical": "node historical_lead_time_analyzer.js"
+  },
+  "dependencies": {
+    "csv-parser": "^3.0.0",
+    "csv-writer": "^1.6.0",
+    "fs-extra": "^11.1.1",
+    "plotly": "^1.0.6",
+    "xlsx": "^0.18.5"
+  },
+  "author": "",
+  "license": "MIT"
+}
